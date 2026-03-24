@@ -37,8 +37,25 @@ const PRESET_TAGS = ["Nuevo", "Promo", "SALE", "Ahorro"];
 const TAG_COLORS = { "Nuevo": "#007aff", "Promo": "#ff9500", "SALE": "#ff3b30", "Ahorro": "#34c759" };
 const SK = "j10_catalogo_final";
 
-const loadData = () => { try { const r = localStorage.getItem(SK); return r ? JSON.parse(r) : null; } catch { return null; } };
-const saveData = d => { try { localStorage.setItem(SK, JSON.stringify(d)); } catch {} };
+const loadData = () => {
+  try {
+    const r = localStorage.getItem(SK);
+    if (!r) return null;
+    const d = JSON.parse(r);
+    // validar que tenga datos reales
+    if (!d || typeof d !== "object") return null;
+    return d;
+  } catch { return null; }
+};
+const saveData = d => {
+  try {
+    const str = JSON.stringify(d);
+    localStorage.setItem(SK, str);
+    // verificar que se guardó
+    const check = localStorage.getItem(SK);
+    if (!check) console.error("Error: no se pudo guardar en localStorage");
+  } catch(e) { console.error("Error guardando:", e); }
+};
 const toB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
 const pickFile = (accept, multiple, cb) => { const i = document.createElement("input"); i.type = "file"; i.accept = accept; if (multiple) i.multiple = true; i.onchange = e => cb(e.target.files); i.click(); };
 
@@ -198,8 +215,13 @@ function App() {
 
   const saveAll = () => {
     setSaving(true);
-    saveData({ products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags });
-    setHasChanges(false);
+    const data = { products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags };
+    saveData(data);
+    // doble verificación
+    const saved = loadData();
+    if (saved && saved.products) {
+      setHasChanges(false);
+    }
     setTimeout(() => setSaving(false), 800);
   };
 
