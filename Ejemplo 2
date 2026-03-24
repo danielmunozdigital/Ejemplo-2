@@ -1,35 +1,50 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Distribuciones J10 — Catálogo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #fff; }
+    textarea { font-family: inherit; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useEffect, useRef } = React;
 
 const DEFAULT_CATEGORIES = [
   { id: 1, name: "Sala", icon: "🛋️" },
   { id: 2, name: "Dormitorio", icon: "🛏️" },
   { id: 3, name: "Exterior", icon: "🌿" },
 ];
-
 const DEFAULT_PRODUCTS = [
-  { id: 1, catId: 1, name: "Sofá Moderno", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600", enabled: true },
-  { id: 2, catId: 1, name: "Mesa de Centro", img: "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600", enabled: true },
-  { id: 3, catId: 1, name: "Estantería", img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600", enabled: false },
-  { id: 4, catId: 2, name: "Cama King", img: "https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600", enabled: true },
-  { id: 5, catId: 2, name: "Mesita de Noche", img: "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=600", enabled: true },
-  { id: 6, catId: 3, name: "Silla de Jardín", img: "https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=600", enabled: true },
-  { id: 7, catId: 3, name: "Mesa Exterior", img: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=600", enabled: false },
+  { id: 1, catId: 1, name: "Sofá Moderno", imgs: ["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"], enabled: true, price: "", description: "", tag: "" },
+  { id: 2, catId: 1, name: "Mesa de Centro", imgs: ["https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600"], enabled: true, price: "", description: "", tag: "" },
+  { id: 4, catId: 2, name: "Cama King", imgs: ["https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600"], enabled: true, price: "", description: "", tag: "" },
+  { id: 6, catId: 3, name: "Silla de Jardín", imgs: ["https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=600"], enabled: true, price: "", description: "", tag: "" },
 ];
-
 const ICONS = ["📦","🛋️","🛏️","🌿","🪑","🚪","🪞","🛁","🍳","💡","🖼️","🧺","🪴","🏡","🛠️","🎨","📐","🪟","🧸","🛒","⭐","🔥","💎","✨","🎁","👔","👗","👟","💍","👜","🕶️","🧴","🍶","🥗","🍕","☕","🎵","📷","💻","📱","🎮","🚗","🌸","🐾","🧩"];
-
 const DEFAULT_BANNER = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200";
+const PRESET_TAGS = ["Nuevo", "Promo", "SALE", "Ahorro"];
+const TAG_COLORS = { "Nuevo": "#007aff", "Promo": "#ff9500", "SALE": "#ff3b30", "Ahorro": "#34c759" };
+const SK = "j10_catalogo_final";
 
-const fileToBase64 = file => new Promise((res, rej) => {
-  const r = new FileReader();
-  r.onload = () => res(r.result);
-  r.onerror = rej;
-  r.readAsDataURL(file);
-});
+const loadData = () => { try { const r = localStorage.getItem(SK); return r ? JSON.parse(r) : null; } catch { return null; } };
+const saveData = d => { try { localStorage.setItem(SK, JSON.stringify(d)); } catch {} };
+const toB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+const pickFile = (accept, multiple, cb) => { const i = document.createElement("input"); i.type = "file"; i.accept = accept; if (multiple) i.multiple = true; i.onchange = e => cb(e.target.files); i.click(); };
 
 function LogoJ10({ size = 40, color = "#1d1d1f" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
       <path d="M100 8 A92 92 0 0 0 8 100" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
       <path d="M8 100 A92 92 0 0 0 100 192" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
       <path d="M100 192 A92 92 0 0 0 175 152" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
@@ -44,37 +59,78 @@ function LogoJ10({ size = 40, color = "#1d1d1f" }) {
   );
 }
 
-function ImagePicker({ value, onChange }) {
-  const fileRef = useRef();
-  const [urlInput, setUrlInput] = useState("");
-  const [tab, setTab] = useState("upload");
-  const handleFile = async e => { const f = e.target.files[0]; if (f) onChange(await fileToBase64(f)); };
-  const handleUrl = () => { if (urlInput.trim()) { onChange(urlInput.trim()); setUrlInput(""); } };
-  const inp = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #d1d1d6", fontSize: 13, outline: "none", color: "#1d1d1f", background: "#fff", boxSizing: "border-box" };
+function TagBadge({ tag, size = "sm" }) {
+  if (!tag) return null;
+  const bg = TAG_COLORS[tag] || "#6e6e73";
+  return <span style={{ background: bg, color: "#fff", fontSize: size === "sm" ? 10 : 12, fontWeight: 700, padding: "3px 8px", borderRadius: 20, letterSpacing: 0.3 }}>{tag}</span>;
+}
+
+function ImageCarousel({ imgs = [] }) {
+  const [idx, setIdx] = useState(0);
+  if (!imgs.length) return <div style={{ width: "100%", aspectRatio: "1/1", background: "#f5f5f7", borderRadius: 10 }} />;
+  return (
+    <div style={{ position: "relative", borderRadius: 10, overflow: "hidden" }}>
+      <img src={imgs[idx]} alt="" style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
+      {imgs.length > 1 && <>
+        <button onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + imgs.length) % imgs.length); }}
+          style={{ position: "absolute", left: 6, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.4)", border: "none", color: "#fff", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
+        <button onClick={e => { e.stopPropagation(); setIdx(i => (i + 1) % imgs.length); }}
+          style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.4)", border: "none", color: "#fff", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
+        <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 4 }}>
+          {imgs.map((_, i) => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i === idx ? "#fff" : "rgba(255,255,255,0.5)" }} />)}
+        </div>
+      </>}
+    </div>
+  );
+}
+
+function MultiImagePicker({ imgs = [], onChange }) {
+  const [url, setUrl] = useState("");
+  const addFiles = async files => { const b = await Promise.all(Array.from(files).map(toB64)); onChange([...imgs, ...b]); };
+  const addUrl = () => { if (url.trim()) { onChange([...imgs, url.trim()]); setUrl(""); } };
+  const rm = i => onChange(imgs.filter((_, j) => j !== i));
   return (
     <div>
-      {value && <img src={value} alt="preview" style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 10, marginBottom: 10 }} onError={e => { e.target.style.display = "none"; }} />}
-      <div style={{ display: "flex", marginBottom: 10, borderRadius: 10, overflow: "hidden", border: "1px solid #d1d1d6" }}>
-        {["upload","url"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: "8px 0", background: tab === t ? "#1d1d1f" : "#fff", color: tab === t ? "#fff" : "#555", border: "none", cursor: "pointer", fontWeight: 500, fontSize: 13 }}>
-            {t === "upload" ? "📁 Subir archivo" : "🔗 URL"}
-          </button>
-        ))}
-      </div>
-      {tab === "upload" && <>
-        <div onClick={() => fileRef.current.click()} style={{ border: "1.5px dashed #d1d1d6", borderRadius: 12, padding: "20px 16px", textAlign: "center", cursor: "pointer", background: "#f5f5f7" }}>
-          <div style={{ fontSize: 24, marginBottom: 6 }}>📷</div>
-          <div style={{ color: "#555", fontSize: 13 }}>Toca para seleccionar</div>
-          <div style={{ color: "#aaa", fontSize: 11, marginTop: 3 }}>JPG, PNG, WEBP</div>
-        </div>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-      </>}
-      {tab === "url" && (
-        <div style={{ display: "flex", gap: 8 }}>
-          <input style={{ ...inp, flex: 1 }} placeholder="https://..." value={urlInput} onChange={e => setUrlInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleUrl(); }} />
-          <button onClick={handleUrl} style={{ padding: "10px 16px", borderRadius: 10, background: "#1d1d1f", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>OK</button>
+      {imgs.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          {imgs.map((img, i) => (
+            <div key={i} style={{ position: "relative", width: 72, height: 72 }}>
+              <img src={img} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, display: "block" }} />
+              <button onClick={() => rm(i)} style={{ position: "absolute", top: -6, right: -6, background: "#ff3b30", border: "none", color: "#fff", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>×</button>
+            </div>
+          ))}
         </div>
       )}
+      <div onClick={() => pickFile("image/*", true, addFiles)} style={{ border: "1.5px dashed #d1d1d6", borderRadius: 12, padding: "14px 16px", textAlign: "center", cursor: "pointer", background: "#f5f5f7", marginBottom: 8 }}>
+        <div style={{ fontSize: 20, marginBottom: 4 }}>📷</div>
+        <div style={{ color: "#555", fontSize: 12 }}>Subir foto(s)</div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input style={{ flex: 1, padding: "9px 12px", borderRadius: 10, border: "1px solid #d1d1d6", fontSize: 13, outline: "none", color: "#1d1d1f", background: "#fff", boxSizing: "border-box" }}
+          placeholder="O pega URL..." value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addUrl(); }} />
+        <button onClick={addUrl} style={{ padding: "9px 14px", borderRadius: 10, background: "#1d1d1f", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function TagSelector({ value, onChange, customTags = [] }) {
+  const [ci, setCi] = useState("");
+  const all = [...PRESET_TAGS, ...customTags.filter(t => !PRESET_TAGS.includes(t))];
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        <button onClick={() => onChange("")} style={{ padding: "5px 12px", borderRadius: 20, border: "1px solid " + (!value ? "#1d1d1f" : "#d1d1d6"), background: !value ? "#1d1d1f" : "transparent", color: !value ? "#fff" : "#555", cursor: "pointer", fontSize: 12 }}>Sin etiqueta</button>
+        {all.map(t => (
+          <button key={t} onClick={() => onChange(t)} style={{ padding: "5px 12px", borderRadius: 20, border: "1px solid " + (value === t ? (TAG_COLORS[t] || "#6e6e73") : "#d1d1d6"), background: value === t ? (TAG_COLORS[t] || "#6e6e73") : "transparent", color: value === t ? "#fff" : "#555", cursor: "pointer", fontSize: 12 }}>{t}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid #d1d1d6", fontSize: 13, outline: "none", background: "#fff", color: "#1d1d1f", boxSizing: "border-box" }}
+          placeholder="Etiqueta personalizada..." value={ci} onChange={e => setCi(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && ci.trim()) { onChange(ci.trim()); setCi(""); } }} />
+        <button onClick={() => { if (ci.trim()) { onChange(ci.trim()); setCi(""); } }} style={{ padding: "8px 14px", borderRadius: 10, background: "#1d1d1f", color: "#fff", border: "none", cursor: "pointer", fontSize: 13 }}>+</button>
+      </div>
     </div>
   );
 }
@@ -88,99 +144,87 @@ function AdminSection({ label, children }) {
   );
 }
 
-export default function App() {
+function App() {
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [whatsapp, setWhatsapp] = useState("573001234567");
   const [adminPassword, setAdminPassword] = useState("admin123");
   const [logoImg, setLogoImg] = useState(null);
   const [bannerImg, setBannerImg] = useState(DEFAULT_BANNER);
+  const [customTags, setCustomTags] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-
+  const [hasChanges, setHasChanges] = useState(false);
   const [view, setView] = useState("client");
   const [activeCat, setActiveCat] = useState(null);
   const [search, setSearch] = useState("");
-  const [selectedImg, setSelectedImg] = useState(null);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [selProd, setSelProd] = useState(null);
+  const [carIdx, setCarIdx] = useState(0);
+  const [editProd, setEditProd] = useState(null);
   const [loginPw, setLoginPw] = useState("");
   const [loginErr, setLoginErr] = useState(false);
-  const [editingWa, setEditingWa] = useState(false);
-  const [waInput, setWaInput] = useState("");
+  const [editWa, setEditWa] = useState(false);
+  const [waIn, setWaIn] = useState("");
   const [newCatName, setNewCatName] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("📦");
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  const [uploadCat, setUploadCat] = useState("");
-  const [uploadName, setUploadName] = useState("");
-  const [uploadImg, setUploadImg] = useState("");
-  const [changingPw, setChangingPw] = useState(false);
+  const [showIcons, setShowIcons] = useState(false);
+  const [upCat, setUpCat] = useState("");
+  const [upName, setUpName] = useState("");
+  const [upImgs, setUpImgs] = useState([]);
+  const [upPrice, setUpPrice] = useState("");
+  const [upDesc, setUpDesc] = useState("");
+  const [upTag, setUpTag] = useState("");
+  const [chPw, setChPw] = useState(false);
   const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [pwError, setPwError] = useState("");
-  const [editingBanner, setEditingBanner] = useState(false);
-
-  const logoRef = useRef();
+  const [confPw, setConfPw] = useState("");
+  const [pwErr, setPwErr] = useState("");
+  const [editBanner, setEditBanner] = useState(false);
+  const [ctIn, setCtIn] = useState("");
+  const bannerUrlRef = useRef();
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [p, c, w, pw, lg, bn] = await Promise.all([
-          window.storage.get("catalogo:products").catch(() => null),
-          window.storage.get("catalogo:categories").catch(() => null),
-          window.storage.get("catalogo:whatsapp").catch(() => null),
-          window.storage.get("catalogo:password").catch(() => null),
-          window.storage.get("catalogo:logo").catch(() => null),
-          window.storage.get("catalogo:banner").catch(() => null),
-        ]);
-        if (p) setProducts(JSON.parse(p.value));
-        if (c) setCategories(JSON.parse(c.value));
-        if (w) setWhatsapp(w.value);
-        if (pw) setAdminPassword(pw.value);
-        if (lg) setLogoImg(lg.value);
-        if (bn) setBannerImg(bn.value);
-      } catch (_) {}
-      setLoaded(true);
-    })();
+    const d = loadData();
+    if (d) {
+      if (d.products) setProducts(d.products);
+      if (d.categories) setCategories(d.categories);
+      if (d.whatsapp) setWhatsapp(d.whatsapp);
+      if (d.adminPassword) setAdminPassword(d.adminPassword);
+      if (d.logoImg) setLogoImg(d.logoImg);
+      if (d.bannerImg) setBannerImg(d.bannerImg);
+      if (d.customTags) setCustomTags(d.customTags);
+    }
+    setLoaded(true);
   }, []);
 
-  const persist = async (pr, ca, wa, pw) => {
+  const saveAll = () => {
     setSaving(true);
-    try {
-      await Promise.all([
-        window.storage.set("catalogo:products", JSON.stringify(pr)),
-        window.storage.set("catalogo:categories", JSON.stringify(ca)),
-        window.storage.set("catalogo:whatsapp", wa),
-        window.storage.set("catalogo:password", pw),
-      ]);
-    } catch (_) {}
-    setTimeout(() => setSaving(false), 1000);
+    saveData({ products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags });
+    setHasChanges(false);
+    setTimeout(() => setSaving(false), 800);
   };
 
-  const updP = fn => setProducts(p => { const n = fn(p); persist(n, categories, whatsapp, adminPassword); return n; });
-  const updC = fn => setCategories(c => { const n = fn(c); persist(products, n, whatsapp, adminPassword); return n; });
-  const updWa = v => { setWhatsapp(v); persist(products, categories, v, adminPassword); };
-  const updPw = v => { setAdminPassword(v); persist(products, categories, whatsapp, v); };
-  const updLogo = async v => { setLogoImg(v); try { await window.storage.set("catalogo:logo", v || ""); } catch (_) {} };
-  const updBanner = async v => { setBannerImg(v); try { await window.storage.set("catalogo:banner", v); } catch (_) {} };
+  const mark = () => setHasChanges(true);
+  const updP = fn => { setProducts(p => fn(p)); mark(); };
+  const updC = fn => { setCategories(c => fn(c)); mark(); };
 
-  const toggleProduct = id => updP(ps => ps.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
-  const deleteProduct = id => updP(ps => ps.filter(p => p.id !== id));
+  const toggleProd = id => updP(ps => ps.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
+  const delProd = id => updP(ps => ps.filter(p => p.id !== id));
   const saveEdit = () => {
-    if (!editingProduct || !editingProduct.name.trim() || !editingProduct.img) return;
-    updP(ps => ps.map(p => p.id === editingProduct.id ? { ...p, ...editingProduct } : p));
-    setEditingProduct(null);
+    if (!editProd?.name.trim() || !editProd?.imgs?.length) return;
+    updP(ps => ps.map(p => p.id === editProd.id ? { ...p, ...editProd } : p));
+    setEditProd(null);
   };
-  const addProduct = () => {
-    if (!uploadName.trim() || !uploadImg || !uploadCat) return;
-    updP(ps => [...ps, { id: Date.now(), catId: parseInt(uploadCat), name: uploadName.trim(), img: uploadImg, enabled: true }]);
-    setUploadName(""); setUploadImg(""); setUploadCat("");
+  const addProd = () => {
+    if (!upName.trim() || !upImgs.length || !upCat) return;
+    updP(ps => [...ps, { id: Date.now(), catId: parseInt(upCat), name: upName.trim(), imgs: upImgs, enabled: true, price: upPrice.trim(), description: upDesc.trim(), tag: upTag }]);
+    setUpName(""); setUpImgs([]); setUpCat(""); setUpPrice(""); setUpDesc(""); setUpTag("");
   };
-  const addCategory = () => {
+  const addCat = () => {
     if (!newCatName.trim()) return;
     updC(cs => [...cs, { id: Date.now(), name: newCatName.trim(), icon: newCatIcon }]);
-    setNewCatName(""); setNewCatIcon("📦"); setShowIconPicker(false);
+    setNewCatName(""); setNewCatIcon("📦"); setShowIcons(false);
   };
-  const deleteCat = id => {
+  const delCat = id => {
     updC(cs => cs.filter(c => c.id !== id));
     updP(ps => ps.filter(p => p.catId !== id));
     if (activeCat === id) setActiveCat(null);
@@ -189,92 +233,96 @@ export default function App() {
     if (loginPw === adminPassword) { setView("admin"); setLoginErr(false); setLoginPw(""); }
     else setLoginErr(true);
   };
-  const savePassword = () => {
-    if (newPw.length < 6) { setPwError("Mínimo 6 caracteres"); return; }
-    if (newPw !== confirmPw) { setPwError("Las contraseñas no coinciden"); return; }
-    updPw(newPw); setChangingPw(false); setNewPw(""); setConfirmPw(""); setPwError("");
+  const savePw = () => {
+    if (newPw.length < 6) { setPwErr("Mínimo 6 caracteres"); return; }
+    if (newPw !== confPw) { setPwErr("No coinciden"); return; }
+    setAdminPassword(newPw); mark(); setChPw(false); setNewPw(""); setConfPw(""); setPwErr("");
   };
+  const addCt = () => {
+    if (ctIn.trim() && !customTags.includes(ctIn.trim())) { setCustomTags(t => [...t, ctIn.trim()]); mark(); }
+    setCtIn("");
+  };
+  const rmCt = t => { setCustomTags(ts => ts.filter(x => x !== t)); mark(); };
 
-  const visibleProducts = useMemo(() => {
-    let list = view === "admin" ? products : products.filter(p => p.enabled);
-    if (activeCat) list = list.filter(p => p.catId === activeCat);
-    if (search) list = list.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-    return list;
+  const visible = useMemo(() => {
+    let l = view === "admin" ? products : products.filter(p => p.enabled);
+    if (activeCat) l = l.filter(p => p.catId === activeCat);
+    if (search) l = l.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    return l;
   }, [products, activeCat, search, view]);
 
   const clientCats = categories.filter(c => products.some(p => p.catId === c.id && p.enabled));
 
   const inp = { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #d1d1d6", fontSize: 14, outline: "none", color: "#1d1d1f", background: "#fff", boxSizing: "border-box", marginBottom: 10 };
-  const secBtn = { padding: "10px 20px", borderRadius: 10, background: "#1d1d1f", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer", fontSize: 14 };
-  const ghostBtn = { padding: "10px 20px", borderRadius: 10, background: "#f5f5f7", color: "#1d1d1f", border: "none", fontWeight: 500, cursor: "pointer", fontSize: 14 };
+  const pri = { padding: "10px 20px", borderRadius: 10, background: "#1d1d1f", color: "#fff", border: "none", fontWeight: 600, cursor: "pointer", fontSize: 14 };
+  const gho = { padding: "10px 20px", borderRadius: 10, background: "#f5f5f7", color: "#1d1d1f", border: "none", fontWeight: 500, cursor: "pointer", fontSize: 14 };
 
   if (!loaded) return (
-    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, fontFamily: "-apple-system, 'Segoe UI', sans-serif" }}>
-      <LogoJ10 size={52} />
-      <div style={{ color: "#aaa", fontSize: 14 }}>Cargando...</div>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+      <LogoJ10 size={52} /><div style={{ color: "#aaa", fontSize: 14 }}>Cargando...</div>
     </div>
   );
 
   if (view === "login") return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f7", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system, 'Segoe UI', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f5f5f7", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 20, padding: "48px 40px", width: 340, maxWidth: "92vw", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🔐</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#1d1d1f" }}>Panel Admin</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>Panel Admin</div>
         </div>
         <input type="password" placeholder="Contraseña" value={loginPw}
           onChange={e => setLoginPw(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}
           style={{ ...inp, border: loginErr ? "1px solid #ff3b30" : "1px solid #d1d1d6", marginBottom: loginErr ? 6 : 16 }} />
         {loginErr && <div style={{ color: "#ff3b30", fontSize: 13, marginBottom: 12 }}>Contraseña incorrecta</div>}
-        <button onClick={handleLogin} style={{ ...secBtn, width: "100%", padding: 14, borderRadius: 12, fontSize: 15 }}>Entrar</button>
-        <button onClick={() => setView("client")} style={{ ...ghostBtn, width: "100%", padding: 13, marginTop: 10, borderRadius: 12 }}>← Volver al catálogo</button>
+        <button onClick={handleLogin} style={{ ...pri, width: "100%", padding: 14, borderRadius: 12, fontSize: 15 }}>Entrar</button>
+        <button onClick={() => setView("client")} style={{ ...gho, width: "100%", padding: 13, marginTop: 10, borderRadius: 12 }}>← Volver al catálogo</button>
       </div>
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: view === "admin" ? "#f5f5f7" : "#fff", fontFamily: "-apple-system, 'Segoe UI', sans-serif", color: "#1d1d1f", paddingBottom: 80 }}>
+    <div style={{ minHeight: "100vh", background: view === "admin" ? "#f5f5f7" : "#fff", paddingBottom: 80 }}>
 
       {/* HEADER */}
-      <div style={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid #e5e5ea", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
+      <div style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(20px)", borderBottom: "1px solid #e5e5ea", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
         {view === "admin"
-          ? <div style={{ fontSize: 17, fontWeight: 600 }}>Panel de administración</div>
+          ? <div style={{ fontSize: 16, fontWeight: 700 }}>⚙️ Administración</div>
           : <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {logoImg ? <img src={logoImg} alt="logo" style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 6 }} /> : <LogoJ10 size={34} />}
-              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, whiteSpace: "nowrap" }}>Distribuciones J10</div>
+              {logoImg ? <img src={logoImg} alt="logo" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6 }} /> : <LogoJ10 size={32} />}
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3, whiteSpace: "nowrap" }}>Distribuciones J10</div>
             </div>}
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {saving && <span style={{ fontSize: 12, color: "#007aff" }}>Guardando...</span>}
+          {view === "admin" && hasChanges && !saving && (
+            <button onClick={saveAll} style={{ ...pri, padding: "8px 18px", fontSize: 13, borderRadius: 10, background: "#ff9500" }}>💾 Guardar cambios</button>
+          )}
+          {view === "admin" && !hasChanges && !saving && <span style={{ fontSize: 12, color: "#34c759" }}>✓ Al día</span>}
+          {saving && <span style={{ fontSize: 12, color: "#007aff" }}>✓ Guardado</span>}
           {view === "admin"
-            ? <button onClick={() => setView("client")} style={{ ...ghostBtn, padding: "7px 14px", fontSize: 13, borderRadius: 8 }}>← Salir</button>
+            ? <button onClick={() => setView("client")} style={{ ...gho, padding: "7px 14px", fontSize: 13, borderRadius: 8 }}>← Salir</button>
             : <button onClick={() => setView("login")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500, color: "#007aff" }}>Admin</button>}
         </div>
       </div>
 
       {/* CLIENT */}
       {view === "client" && <>
-        {/* HERO BANNER */}
-        <div style={{ position: "relative", height: 400, overflow: "hidden", background: "#1d1d1f" }}>
+        <div style={{ position: "relative", height: 360, overflow: "hidden", background: "#1d1d1f" }}>
           {bannerImg && <img src={bannerImg} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, display: "block" }} />}
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 32 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 12, letterSpacing: 2 }}>COLECCIÓN</div>
-            <div style={{ fontSize: 52, fontWeight: 800, color: "#fff", letterSpacing: -2, lineHeight: 1.05, marginBottom: 14 }}>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10, letterSpacing: 2 }}>COLECCIÓN</div>
+            <div style={{ fontSize: 44, fontWeight: 800, color: "#fff", letterSpacing: -1.5, lineHeight: 1.05, marginBottom: 10 }}>
               {activeCat ? categories.find(c => c.id === activeCat)?.name : "Bienvenidos"}
             </div>
-            <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", maxWidth: 380, lineHeight: 1.6 }}>
-              Los mejores productos seleccionados para ti
-            </div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 340, lineHeight: 1.6 }}>Los mejores productos seleccionados para ti</div>
           </div>
         </div>
 
-        {/* CATEGORY TABS */}
         <div style={{ borderBottom: "1px solid #e5e5ea" }}>
           <div style={{ display: "flex", justifyContent: "center", overflowX: "auto", maxWidth: 960, margin: "0 auto" }}>
             {[{ id: null, name: "Todos", icon: "" }, ...clientCats].map(c => {
-              const active = c.id === null ? !activeCat : activeCat === c.id;
+              const act = c.id === null ? !activeCat : activeCat === c.id;
               return (
                 <button key={c.id === null ? "all" : c.id} onClick={() => setActiveCat(c.id)}
-                  style={{ padding: "15px 22px", background: "none", border: "none", borderBottom: active ? "2.5px solid #1d1d1f" : "2.5px solid transparent", color: active ? "#1d1d1f" : "#6e6e73", fontWeight: active ? 700 : 400, cursor: "pointer", fontSize: 14, whiteSpace: "nowrap", marginBottom: -1 }}>
+                  style={{ padding: "13px 18px", background: "none", border: "none", borderBottom: act ? "2.5px solid #1d1d1f" : "2.5px solid transparent", color: act ? "#1d1d1f" : "#6e6e73", fontWeight: act ? 700 : 400, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap", marginBottom: -1 }}>
                   {c.icon} {c.name}
                 </button>
               );
@@ -282,37 +330,34 @@ export default function App() {
           </div>
         </div>
 
-        {/* SEARCH */}
-        <div style={{ maxWidth: 960, margin: "28px auto 20px", padding: "0 24px" }}>
-          <div style={{ position: "relative", maxWidth: 480 }}>
-            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#aaa" }}>🔍</span>
-            <input style={{ ...inp, paddingLeft: 42, marginBottom: 0, fontSize: 14, background: "#f5f5f7", border: "1px solid transparent", borderRadius: 12 }} placeholder="Buscar productos..." value={search} onChange={e => setSearch(e.target.value)} />
+        <div style={{ maxWidth: 960, margin: "22px auto 16px", padding: "0 16px" }}>
+          <div style={{ position: "relative", maxWidth: 460 }}>
+            <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#aaa" }}>🔍</span>
+            <input style={{ ...inp, paddingLeft: 40, marginBottom: 0, background: "#f5f5f7", border: "1px solid transparent", borderRadius: 12 }}
+              placeholder="Buscar productos..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
 
-        {/* GRID */}
-        <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px" }}>
-          {visibleProducts.length > 0 && (
-            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 16, letterSpacing: 0.5 }}>
-              {visibleProducts.length} producto{visibleProducts.length !== 1 ? "s" : ""}
-            </div>
-          )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 20 }}>
-            {visibleProducts.map(p => (
-              <div key={p.id} onClick={() => setSelectedImg(p)}
-                style={{ borderRadius: 18, overflow: "hidden", background: "#f5f5f7", cursor: "pointer", border: "1px solid #e5e5ea", transition: "transform .15s" }}
+        <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px" }}>
+          {visible.length > 0 && <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 14 }}>{visible.length} producto{visible.length !== 1 ? "s" : ""}</div>}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            {visible.map(p => (
+              <div key={p.id} onClick={() => { setSelProd(p); setCarIdx(0); }}
+                style={{ borderRadius: 16, overflow: "hidden", background: "#f5f5f7", cursor: "pointer", border: "1px solid #e5e5ea", transition: "transform .15s" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}>
-                <div style={{ background: "#fff", padding: 14 }}>
-                  <img src={p.img} alt={p.name} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", borderRadius: 10, display: "block" }} />
+                <div style={{ background: "#fff", padding: 10, position: "relative" }}>
+                  <ImageCarousel imgs={p.imgs || [p.img]} />
+                  {p.tag && <div style={{ position: "absolute", top: 16, left: 16 }}><TagBadge tag={p.tag} /></div>}
                 </div>
-                <div style={{ padding: "10px 14px 14px" }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1d1d1f", marginBottom: 3 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: "#6e6e73" }}>{categories.find(c => c.id === p.catId)?.name}</div>
+                <div style={{ padding: "8px 12px 12px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f", marginBottom: 2 }}>{p.name}</div>
+                  {p.price && <div style={{ fontSize: 13, fontWeight: 700, color: "#1d1d1f" }}>{p.price}</div>}
+                  {p.description && <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 3, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{p.description}</div>}
                 </div>
               </div>
             ))}
-            {visibleProducts.length === 0 && (
+            {visible.length === 0 && (
               <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 0", color: "#bbb" }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
                 <div style={{ fontSize: 15 }}>Sin resultados</div>
@@ -321,138 +366,163 @@ export default function App() {
           </div>
         </div>
 
-        {/* FOOTER */}
-        <div style={{ background: "#1d1d1f", color: "#fff", textAlign: "center", padding: "40px 32px", marginTop: 60 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-            <LogoJ10 size={38} color="#fff" />
-          </div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", letterSpacing: 1 }}>Distribuciones J10 — Todos los derechos reservados</div>
+        <div style={{ background: "#1d1d1f", color: "#fff", textAlign: "center", padding: "36px 24px", marginTop: 56 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><LogoJ10 size={36} color="#fff" /></div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: 1 }}>Distribuciones J10 — Todos los derechos reservados</div>
         </div>
 
         <a href={"https://wa.me/" + whatsapp} target="_blank" rel="noreferrer"
-          style={{ position: "fixed", bottom: 28, right: 28, background: "#25d366", borderRadius: "50%", width: 58, height: 58, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, zIndex: 150, boxShadow: "0 4px 20px rgba(37,211,102,0.45)", textDecoration: "none" }}>💬</a>
+          style={{ position: "fixed", bottom: 24, right: 24, background: "#25d366", borderRadius: "50%", width: 56, height: 56, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, zIndex: 150, boxShadow: "0 4px 20px rgba(37,211,102,0.45)", textDecoration: "none" }}>💬</a>
       </>}
 
       {/* ADMIN */}
       {view === "admin" && (
-        <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
 
-          {/* Logo */}
           <AdminSection label="Logo de la empresa">
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ width: 64, height: 64, borderRadius: 12, background: "#f5f5f7", border: "1px solid #e5e5ea", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                {logoImg ? <img src={logoImg} alt="logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <LogoJ10 size={40} />}
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 60, height: 60, borderRadius: 12, background: "#f5f5f7", border: "1px solid #e5e5ea", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                {logoImg ? <img src={logoImg} alt="logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <LogoJ10 size={38} />}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Logo actual</div>
                 <div style={{ fontSize: 12, color: "#6e6e73" }}>PNG, JPG o SVG</div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={() => logoRef.current.click()} style={{ ...secBtn, padding: "8px 16px", fontSize: 13, borderRadius: 10 }}>Subir</button>
-                {logoImg && <button onClick={() => updLogo(null)} style={{ ...ghostBtn, padding: "7px 16px", fontSize: 13, borderRadius: 10, color: "#ff3b30" }}>Quitar</button>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button onClick={() => pickFile("image/*", false, async f => { setLogoImg(await toB64(f[0])); mark(); })}
+                  style={{ ...pri, padding: "7px 14px", fontSize: 13, borderRadius: 10 }}>Subir</button>
+                {logoImg && <button onClick={() => { setLogoImg(null); mark(); }} style={{ ...gho, padding: "6px 14px", fontSize: 13, borderRadius: 10, color: "#ff3b30" }}>Eliminar</button>}
               </div>
-              <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => { const f = e.target.files[0]; if (f) updLogo(await fileToBase64(f)); }} />
             </div>
           </AdminSection>
 
-          {/* Banner */}
           <AdminSection label="Banner principal">
-            <div style={{ borderRadius: 12, overflow: "hidden", position: "relative", height: 140, background: "#1d1d1f", marginBottom: 14 }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", position: "relative", height: 130, background: "#1d1d1f", marginBottom: 12 }}>
               {bannerImg && <img src={bannerImg} alt="banner" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />}
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", letterSpacing: 0.5 }}>Vista previa del banner</div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Vista previa</span>
               </div>
             </div>
-            {!editingBanner
-              ? <button onClick={() => setEditingBanner(true)} style={{ ...secBtn, width: "100%", padding: 12, borderRadius: 12, fontSize: 14 }}>🖼️ Cambiar imagen del banner</button>
-              : <div>
-                  <ImagePicker value={bannerImg} onChange={v => { updBanner(v); setEditingBanner(false); }} />
-                  <button onClick={() => setEditingBanner(false)} style={{ ...ghostBtn, width: "100%", padding: 11, borderRadius: 12, marginTop: 8 }}>Cancelar</button>
-                </div>}
-          </AdminSection>
-
-          {/* Seguridad */}
-          <AdminSection label="Seguridad">
-            {!changingPw
-              ? <div style={{ display: "flex", alignItems: "center" }}>
-                  <div style={{ flex: 1, fontSize: 15 }}>🔐 Contraseña de acceso</div>
-                  <button style={{ ...ghostBtn, padding: "8px 16px", fontSize: 13, borderRadius: 8 }} onClick={() => setChangingPw(true)}>Cambiar</button>
-                </div>
-              : <>
-                  <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Nueva contraseña (mín. 6 caracteres)</div>
-                  <input type="password" style={inp} placeholder="Nueva contraseña" value={newPw} onChange={e => { setNewPw(e.target.value); setPwError(""); }} />
-                  <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Confirmar contraseña</div>
-                  <input type="password" style={inp} placeholder="Repetir contraseña" value={confirmPw} onChange={e => { setConfirmPw(e.target.value); setPwError(""); }} />
-                  {pwError && <div style={{ color: "#ff3b30", fontSize: 13, marginBottom: 10 }}>{pwError}</div>}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button style={{ ...secBtn, flex: 1 }} onClick={savePassword}>Guardar</button>
-                    <button style={{ ...ghostBtn, flex: 1 }} onClick={() => { setChangingPw(false); setNewPw(""); setConfirmPw(""); setPwError(""); }}>Cancelar</button>
-                  </div>
-                </>}
-          </AdminSection>
-
-          {/* WhatsApp */}
-          <AdminSection label="WhatsApp de contacto">
-            {editingWa
-              ? <div style={{ display: "flex", gap: 8 }}>
-                  <input style={{ ...inp, marginBottom: 0, flex: 1 }} value={waInput} onChange={e => setWaInput(e.target.value)} placeholder="ej: 573001234567" />
-                  <button style={{ ...secBtn }} onClick={() => { updWa(waInput); setEditingWa(false); }}>Guardar</button>
-                </div>
-              : <div style={{ display: "flex", alignItems: "center" }}>
-                  <div style={{ flex: 1, fontSize: 15 }}>💬 +{whatsapp}</div>
-                  <button style={{ ...ghostBtn, padding: "8px 16px", fontSize: 13, borderRadius: 8 }} onClick={() => { setWaInput(whatsapp); setEditingWa(true); }}>Editar</button>
-                </div>}
-          </AdminSection>
-
-          {/* Categorías */}
-          <AdminSection label="Categorías">
-            {categories.map((c, i) => (
-              <div key={c.id} style={{ display: "flex", alignItems: "center", paddingBottom: 12, marginBottom: 12, borderBottom: i < categories.length - 1 ? "1px solid #f2f2f7" : "none" }}>
-                <div style={{ flex: 1, fontSize: 15 }}>{c.icon} {c.name}</div>
-                <button onClick={() => deleteCat(c.id)} style={{ background: "#fff0f0", border: "none", color: "#ff3b30", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>Eliminar</button>
+            <div style={{ display: "flex", gap: 8, marginBottom: editBanner ? 12 : 0 }}>
+              <button onClick={() => setEditBanner(v => !v)} style={{ ...pri, flex: 1, padding: 11, borderRadius: 12, fontSize: 13 }}>
+                🖼️ {editBanner ? "Cancelar" : "Cambiar banner"}
+              </button>
+              {bannerImg && <button onClick={() => { setBannerImg(""); mark(); setEditBanner(false); }} style={{ ...gho, padding: "11px 14px", borderRadius: 12, fontSize: 13, color: "#ff3b30" }}>🗑 Eliminar</button>}
+            </div>
+            {editBanner && <div>
+              <button onClick={() => pickFile("image/*", false, async f => { setBannerImg(await toB64(f[0])); mark(); setEditBanner(false); })}
+                style={{ ...pri, width: "100%", padding: 11, borderRadius: 12, fontSize: 13, marginBottom: 8 }}>📁 Subir archivo</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input id="bnUrl" style={{ ...inp, marginBottom: 0, flex: 1, fontSize: 13 }} placeholder="O pega URL..." />
+                <button onClick={() => { const v = document.getElementById("bnUrl").value.trim(); if (v) { setBannerImg(v); mark(); setEditBanner(false); } }}
+                  style={{ ...pri, padding: "11px 14px", borderRadius: 12, fontSize: 13 }}>OK</button>
               </div>
-            ))}
-            {showIconPicker && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, background: "#f5f5f7", borderRadius: 12, padding: 12, marginBottom: 10 }}>
-                {ICONS.map(ic => (
-                  <button key={ic} onClick={() => { setNewCatIcon(ic); setShowIconPicker(false); }}
-                    style={{ fontSize: 20, background: newCatIcon === ic ? "#1d1d1f" : "transparent", border: "none", borderRadius: 6, padding: "4px 6px", cursor: "pointer" }}>{ic}</button>
+            </div>}
+          </AdminSection>
+
+          <AdminSection label="Etiquetas personalizadas">
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 10 }}>
+              Predefinidas: {PRESET_TAGS.map((t, i) => <span key={t}>{i > 0 ? " " : ""}<TagBadge tag={t} /></span>)}
+            </div>
+            {customTags.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {customTags.map(t => (
+                  <div key={t} style={{ display: "flex", alignItems: "center", gap: 4, background: "#f5f5f7", borderRadius: 20, padding: "4px 10px", fontSize: 12 }}>
+                    <span>{t}</span>
+                    <button onClick={() => rmCt(t)} style={{ background: "none", border: "none", color: "#ff3b30", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+                  </div>
                 ))}
               </div>
             )}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowIconPicker(v => !v)} style={{ fontSize: 20, background: "#f5f5f7", border: "1px solid #d1d1d6", borderRadius: 10, padding: "0 12px", cursor: "pointer", height: 44, flexShrink: 0 }}>{newCatIcon}</button>
-              <input style={{ ...inp, marginBottom: 0, flex: 1 }} placeholder="Nueva categoría..." value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addCategory(); }} />
-              <button style={{ ...secBtn, height: 44, padding: "0 16px" }} onClick={addCategory}>+ Agregar</button>
+              <input style={{ ...inp, marginBottom: 0, flex: 1, fontSize: 13 }} placeholder="Nueva etiqueta..." value={ctIn} onChange={e => setCtIn(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addCt(); }} />
+              <button onClick={addCt} style={{ ...pri, padding: "0 16px", height: 44, borderRadius: 10, fontSize: 13 }}>+ Agregar</button>
             </div>
           </AdminSection>
 
-          {/* Agregar producto */}
+          <AdminSection label="Seguridad">
+            {!chPw
+              ? <div style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{ flex: 1, fontSize: 15 }}>🔐 Contraseña de acceso</div>
+                  <button style={{ ...gho, padding: "8px 14px", fontSize: 13, borderRadius: 8 }} onClick={() => setChPw(true)}>Cambiar</button>
+                </div>
+              : <>
+                  <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Nueva contraseña (mín. 6 caracteres)</div>
+                  <input type="password" style={inp} placeholder="Nueva contraseña" value={newPw} onChange={e => { setNewPw(e.target.value); setPwErr(""); }} />
+                  <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Confirmar</div>
+                  <input type="password" style={inp} placeholder="Repetir contraseña" value={confPw} onChange={e => { setConfPw(e.target.value); setPwErr(""); }} />
+                  {pwErr && <div style={{ color: "#ff3b30", fontSize: 13, marginBottom: 10 }}>{pwErr}</div>}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{ ...pri, flex: 1 }} onClick={savePw}>Guardar</button>
+                    <button style={{ ...gho, flex: 1 }} onClick={() => { setChPw(false); setNewPw(""); setConfPw(""); setPwErr(""); }}>Cancelar</button>
+                  </div>
+                </>}
+          </AdminSection>
+
+          <AdminSection label="WhatsApp de contacto">
+            {editWa
+              ? <div style={{ display: "flex", gap: 8 }}>
+                  <input style={{ ...inp, marginBottom: 0, flex: 1 }} value={waIn} onChange={e => setWaIn(e.target.value)} placeholder="ej: 573001234567" />
+                  <button style={pri} onClick={() => { setWhatsapp(waIn); mark(); setEditWa(false); }}>Guardar</button>
+                </div>
+              : <div style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{ flex: 1, fontSize: 15 }}>💬 +{whatsapp}</div>
+                  <button style={{ ...gho, padding: "8px 14px", fontSize: 13, borderRadius: 8 }} onClick={() => { setWaIn(whatsapp); setEditWa(true); }}>Editar</button>
+                </div>}
+          </AdminSection>
+
+          <AdminSection label="Categorías">
+            {categories.map((c, i) => (
+              <div key={c.id} style={{ display: "flex", alignItems: "center", paddingBottom: 10, marginBottom: 10, borderBottom: i < categories.length - 1 ? "1px solid #f2f2f7" : "none" }}>
+                <div style={{ flex: 1, fontSize: 14 }}>{c.icon} {c.name}</div>
+                <button onClick={() => delCat(c.id)} style={{ background: "#fff0f0", border: "none", color: "#ff3b30", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 500 }}>Eliminar</button>
+              </div>
+            ))}
+            {showIcons && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, background: "#f5f5f7", borderRadius: 12, padding: 10, marginBottom: 10 }}>
+                {ICONS.map(ic => (
+                  <button key={ic} onClick={() => { setNewCatIcon(ic); setShowIcons(false); }}
+                    style={{ fontSize: 20, background: newCatIcon === ic ? "#1d1d1f" : "transparent", border: "none", borderRadius: 6, padding: "3px 5px", cursor: "pointer" }}>{ic}</button>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setShowIcons(v => !v)} style={{ fontSize: 18, background: "#f5f5f7", border: "1px solid #d1d1d6", borderRadius: 10, padding: "0 10px", cursor: "pointer", height: 42, flexShrink: 0 }}>{newCatIcon}</button>
+              <input style={{ ...inp, marginBottom: 0, flex: 1, fontSize: 13 }} placeholder="Nueva categoría..." value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addCat(); }} />
+              <button style={{ ...pri, height: 42, padding: "0 14px", fontSize: 13 }} onClick={addCat}>+ Agregar</button>
+            </div>
+          </AdminSection>
+
           <AdminSection label="Agregar producto">
-            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Nombre del producto</div>
-            <input style={inp} placeholder="ej: Silla Ergonómica" value={uploadName} onChange={e => setUploadName(e.target.value)} />
-            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Categoría</div>
-            <select style={{ ...inp, appearance: "none" }} value={uploadCat} onChange={e => setUploadCat(e.target.value)}>
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Nombre *</div>
+            <input style={inp} placeholder="ej: Silla Ergonómica" value={upName} onChange={e => setUpName(e.target.value)} />
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Precio</div>
+            <input style={inp} placeholder="ej: $120.000" value={upPrice} onChange={e => setUpPrice(e.target.value)} />
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Descripción</div>
+            <textarea style={{ ...inp, resize: "vertical", minHeight: 72 }} placeholder="Descripción del producto..." value={upDesc} onChange={e => setUpDesc(e.target.value)} />
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Categoría *</div>
+            <select style={{ ...inp, appearance: "none" }} value={upCat} onChange={e => setUpCat(e.target.value)}>
               <option value="">Seleccionar categoría...</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Foto del producto</div>
-            <ImagePicker value={uploadImg} onChange={setUploadImg} />
-            <button onClick={addProduct} style={{ ...secBtn, width: "100%", padding: 13, borderRadius: 12, marginTop: 8, fontSize: 15, opacity: (!uploadName.trim() || !uploadImg || !uploadCat) ? 0.4 : 1 }}>
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Etiqueta</div>
+            <TagSelector value={upTag} onChange={setUpTag} customTags={customTags} />
+            <div style={{ fontSize: 13, color: "#6e6e73", margin: "12px 0 6px" }}>Fotos * (puedes agregar varias)</div>
+            <MultiImagePicker imgs={upImgs} onChange={setUpImgs} />
+            <button onClick={addProd} style={{ ...pri, width: "100%", padding: 13, borderRadius: 12, marginTop: 12, fontSize: 14, opacity: (!upName.trim() || !upImgs.length || !upCat) ? 0.4 : 1 }}>
               Agregar al catálogo
             </button>
           </AdminSection>
 
-          {/* Gestionar productos */}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#6e6e73", marginBottom: 10, borderBottom: "1px solid #e5e5ea", paddingBottom: 8 }}>
             Productos ({products.length})
           </div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             {[{ id: null, name: "Todos" }, ...categories].map(c => {
-              const active = c.id === null ? !activeCat : activeCat === c.id;
+              const act = c.id === null ? !activeCat : activeCat === c.id;
               return (
                 <button key={c.id === null ? "all" : c.id} onClick={() => setActiveCat(c.id)}
-                  style={{ padding: "7px 16px", borderRadius: 20, border: "1px solid " + (active ? "#1d1d1f" : "#d1d1d6"), background: active ? "#1d1d1f" : "transparent", color: active ? "#fff" : "#555", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>
+                  style={{ padding: "6px 14px", borderRadius: 20, border: "1px solid " + (act ? "#1d1d1f" : "#d1d1d6"), background: act ? "#1d1d1f" : "transparent", color: act ? "#fff" : "#555", cursor: "pointer", fontSize: 12, fontWeight: 500 }}>
                   {c.name}
                 </button>
               );
@@ -460,17 +530,20 @@ export default function App() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {(activeCat ? products.filter(p => p.catId === activeCat) : products).map(p => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff", borderRadius: 14, padding: 12, border: "1px solid #e5e5ea" }}>
-                <img src={p.img} alt={p.name} style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", borderRadius: 14, padding: 12, border: "1px solid #e5e5ea" }}>
+                <img src={(p.imgs || [p.img])[0]} alt={p.name} style={{ width: 50, height: 50, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>{categories.find(c => c.id === p.catId)?.name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                    {p.tag && <TagBadge tag={p.tag} />}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6e6e73" }}>{categories.find(c => c.id === p.catId)?.name}{p.price ? " · " + p.price : ""}</div>
                 </div>
-                <button onClick={() => toggleProduct(p.id)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: p.enabled ? "#e8faf0" : "#fff2f2", color: p.enabled ? "#34c759" : "#ff3b30", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>
+                <button onClick={() => toggleProd(p.id)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: p.enabled ? "#e8faf0" : "#fff2f2", color: p.enabled ? "#34c759" : "#ff3b30", fontWeight: 600, cursor: "pointer", fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}>
                   {p.enabled ? "✓ Activo" : "✗ Oculto"}
                 </button>
-                <button onClick={() => setEditingProduct({ ...p })} style={{ background: "#f0f5ff", border: "none", color: "#007aff", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontSize: 15, flexShrink: 0 }}>✏️</button>
-                <button onClick={() => deleteProduct(p.id)} style={{ background: "#fff2f2", border: "none", color: "#ff3b30", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontSize: 15, flexShrink: 0 }}>🗑</button>
+                <button onClick={() => setEditProd({ ...p, imgs: p.imgs || [p.img] })} style={{ background: "#f0f5ff", border: "none", color: "#007aff", borderRadius: 8, padding: "6px 9px", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>✏️</button>
+                <button onClick={() => delProd(p.id)} style={{ background: "#fff2f2", border: "none", color: "#ff3b30", borderRadius: 8, padding: "6px 9px", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>🗑</button>
               </div>
             ))}
           </div>
@@ -478,38 +551,71 @@ export default function App() {
       )}
 
       {/* EDIT MODAL */}
-      {editingProduct && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setEditingProduct(null)}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: 28, width: 390, maxWidth: "94vw", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Editar producto</div>
+      {editProd && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setEditProd(null)}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: 400, maxWidth: "95vw", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 18 }}>Editar producto</div>
             <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Nombre</div>
-            <input style={inp} value={editingProduct.name} onChange={e => setEditingProduct(ep => ({ ...ep, name: e.target.value }))} />
+            <input style={inp} value={editProd.name} onChange={e => setEditProd(ep => ({ ...ep, name: e.target.value }))} />
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Precio</div>
+            <input style={inp} placeholder="ej: $120.000" value={editProd.price || ""} onChange={e => setEditProd(ep => ({ ...ep, price: e.target.value }))} />
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Descripción</div>
+            <textarea style={{ ...inp, resize: "vertical", minHeight: 64 }} value={editProd.description || ""} onChange={e => setEditProd(ep => ({ ...ep, description: e.target.value }))} />
             <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Categoría</div>
-            <select style={{ ...inp, appearance: "none" }} value={editingProduct.catId} onChange={e => setEditingProduct(ep => ({ ...ep, catId: parseInt(e.target.value) }))}>
+            <select style={{ ...inp, appearance: "none" }} value={editProd.catId} onChange={e => setEditProd(ep => ({ ...ep, catId: parseInt(e.target.value) }))}>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Foto</div>
-            <ImagePicker value={editingProduct.img} onChange={img => setEditingProduct(ep => ({ ...ep, img }))} />
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button onClick={saveEdit} style={{ ...secBtn, flex: 1, padding: 12, borderRadius: 12 }}>Guardar</button>
-              <button onClick={() => setEditingProduct(null)} style={{ ...ghostBtn, flex: 1, padding: 12, borderRadius: 12 }}>Cancelar</button>
+            <div style={{ fontSize: 13, color: "#6e6e73", marginBottom: 6 }}>Etiqueta</div>
+            <TagSelector value={editProd.tag || ""} onChange={v => setEditProd(ep => ({ ...ep, tag: v }))} customTags={customTags} />
+            <div style={{ fontSize: 13, color: "#6e6e73", margin: "12px 0 6px" }}>Fotos</div>
+            <MultiImagePicker imgs={editProd.imgs || []} onChange={imgs => setEditProd(ep => ({ ...ep, imgs }))} />
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button onClick={saveEdit} style={{ ...pri, flex: 1, padding: 12, borderRadius: 12 }}>Guardar</button>
+              <button onClick={() => setEditProd(null)} style={{ ...gho, flex: 1, padding: 12, borderRadius: 12 }}>Cancelar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* PRODUCT MODAL */}
-      {selectedImg && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setSelectedImg(null)}>
-          <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", maxWidth: 440, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }} onClick={e => e.stopPropagation()}>
-            <div style={{ position: "relative" }}>
-              <img src={selectedImg.img} alt={selectedImg.name} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
-              <button onClick={() => setSelectedImg(null)} style={{ position: "absolute", top: 12, right: 12, background: "#fff", border: "none", borderRadius: "50%", width: 34, height: 34, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>×</button>
+      {/* PRODUCT DETAIL MODAL */}
+      {selProd && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setSelProd(null)}>
+          <div style={{ background: "#fff", borderRadius: 24, overflow: "hidden", maxWidth: 440, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ position: "relative", background: "#fff", padding: 12 }}>
+              {(() => {
+                const imgs = selProd.imgs || [selProd.img];
+                return (
+                  <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
+                    <img src={imgs[carIdx]} alt={selProd.name} style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }} />
+                    {imgs.length > 1 && <>
+                      <button onClick={e => { e.stopPropagation(); setCarIdx(i => (i - 1 + imgs.length) % imgs.length); }}
+                        style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.4)", border: "none", color: "#fff", borderRadius: "50%", width: 34, height: 34, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
+                      <button onClick={e => { e.stopPropagation(); setCarIdx(i => (i + 1) % imgs.length); }}
+                        style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.4)", border: "none", color: "#fff", borderRadius: "50%", width: 34, height: 34, cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
+                      <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5 }}>
+                        {imgs.map((_, i) => <div key={i} onClick={e => { e.stopPropagation(); setCarIdx(i); }} style={{ width: 7, height: 7, borderRadius: "50%", background: i === carIdx ? "#1d1d1f" : "rgba(0,0,0,0.25)", cursor: "pointer" }} />)}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, overflowX: "auto", paddingBottom: 2 }}>
+                        {imgs.map((img, i) => (
+                          <img key={i} src={img} alt="" onClick={e => { e.stopPropagation(); setCarIdx(i); }}
+                            style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: i === carIdx ? "2px solid #1d1d1f" : "2px solid transparent", cursor: "pointer" }} />
+                        ))}
+                      </div>
+                    </>}
+                  </div>
+                );
+              })()}
+              <button onClick={() => setSelProd(null)} style={{ position: "absolute", top: 18, right: 18, background: "#fff", border: "none", borderRadius: "50%", width: 32, height: 32, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", zIndex: 10 }}>×</button>
             </div>
-            <div style={{ padding: "20px 24px 26px" }}>
-              <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 4 }}>{categories.find(c => c.id === selectedImg.catId)?.name}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 18 }}>{selectedImg.name}</div>
-              <a href={"https://wa.me/" + whatsapp + "?text=Hola! Me interesa: " + selectedImg.name} target="_blank" rel="noreferrer"
+            <div style={{ padding: "16px 20px 24px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ fontSize: 11, color: "#6e6e73" }}>{categories.find(c => c.id === selProd.catId)?.name}</div>
+                {selProd.tag && <TagBadge tag={selProd.tag} />}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{selProd.name}</div>
+              {selProd.price && <div style={{ fontSize: 18, fontWeight: 800, color: "#1d1d1f", marginBottom: 8 }}>{selProd.price}</div>}
+              {selProd.description && <div style={{ fontSize: 14, color: "#6e6e73", lineHeight: 1.6, marginBottom: 16 }}>{selProd.description}</div>}
+              <a href={"https://wa.me/" + whatsapp + "?text=Hola! Me interesa: " + selProd.name} target="_blank" rel="noreferrer"
                 style={{ display: "block", textAlign: "center", padding: 14, background: "#25d366", color: "#fff", borderRadius: 12, textDecoration: "none", fontWeight: 600, fontSize: 15 }}>
                 💬 Consultar por WhatsApp
               </a>
@@ -521,11 +627,7 @@ export default function App() {
   );
 }
 
-function AdminSection({ label, children }) {
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#6e6e73", marginBottom: 10, borderBottom: "1px solid #e5e5ea", paddingBottom: 8 }}>{label}</div>
-      <div style={{ background: "#fff", border: "1px solid #e5e5ea", borderRadius: 16, padding: 20 }}>{children}</div>
-    </div>
-  );
-}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
