@@ -21,9 +21,26 @@
 const { useState, useMemo, useEffect, useRef } = React;
 
 const DEFAULT_CATEGORIES = [
-  { id: 1, name: "Sala", icon: "🛋️" },
-  { id: 2, name: "Dormitorio", icon: "🛏️" },
-  { id: 3, name: "Exterior", icon: "🌿" },
+  { id: 1,  name: "Sala",              icon: "🛋️" },
+  { id: 2,  name: "Dormitorio",        icon: "🛏️" },
+  { id: 3,  name: "Exterior",          icon: "🌿" },
+  { id: 4,  name: "Cocina",            icon: "🍳" },
+  { id: 5,  name: "Baño",              icon: "🛁" },
+  { id: 6,  name: "Oficina",           icon: "💻" },
+  { id: 7,  name: "Iluminación",       icon: "💡" },
+  { id: 8,  name: "Decoración",        icon: "🖼️" },
+  { id: 9,  name: "Almacenamiento",    icon: "🗄️" },
+  { id: 10, name: "Textiles",          icon: "🧶" },
+  { id: 11, name: "Jardín",            icon: "🪴" },
+  { id: 12, name: "Infantil",          icon: "🧸" },
+  { id: 13, name: "Comedor",           icon: "🍽️" },
+  { id: 14, name: "Entretenimiento",   icon: "🎮" },
+  { id: 15, name: "Tecnología",        icon: "📱" },
+  { id: 16, name: "Ropa y Moda",       icon: "👗" },
+  { id: 17, name: "Accesorios",        icon: "👜" },
+  { id: 18, name: "Deportes",          icon: "🏋️" },
+  { id: 19, name: "Mascotas",          icon: "🐾" },
+  { id: 20, name: "Ofertas",           icon: "🔥" },
 ];
 const DEFAULT_PRODUCTS = [
   { id: 1, catId: 1, name: "Sofá Moderno", imgs: ["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"], enabled: true, price: "", description: "", tag: "" },
