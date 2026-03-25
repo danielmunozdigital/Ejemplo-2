@@ -213,12 +213,15 @@ function App() {
     setLoaded(true);
   }, []);
 
-  // Auto-guardar cada vez que cambian los datos clave
+  // Auto-guardar cada vez que cambian los datos, solo después de cargar
+  const isFirstRender = useRef(true);
   useEffect(() => {
     if (!loaded) return;
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
     const data = { products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags };
     saveData(data);
-  }, [products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags, loaded]);
+    setHasChanges(false);
+  }, [products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags]);
 
   const saveAll = () => {
     setSaving(true);
