@@ -213,19 +213,23 @@ function App() {
     setLoaded(true);
   }, []);
 
+  // Auto-guardar cada vez que cambian los datos clave
+  useEffect(() => {
+    if (!loaded) return;
+    const data = { products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags };
+    saveData(data);
+  }, [products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags, loaded]);
+
   const saveAll = () => {
     setSaving(true);
     const data = { products, categories, whatsapp, adminPassword, logoImg, bannerImg, customTags };
     saveData(data);
-    // doble verificación
-    const saved = loadData();
-    if (saved && saved.products) {
-      setHasChanges(false);
-    }
+    setHasChanges(false);
     setTimeout(() => setSaving(false), 800);
   };
 
   const mark = () => setHasChanges(true);
+  // updP y updC guardan automáticamente via el useEffect de auto-guardado
   const updP = fn => { setProducts(p => fn(p)); mark(); };
   const updC = fn => { setCategories(c => fn(c)); mark(); };
 
