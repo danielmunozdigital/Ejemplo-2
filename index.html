@@ -1,82 +1,110 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Distribuciones J10 — Catálogo</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #fff; }
-    textarea { font-family: inherit; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,'Segoe UI',sans-serif;background:#fff}
+    textarea{font-family:inherit}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
   </style>
 </head>
 <body>
 <div id="root"></div>
 
-<script>
-firebase.initializeApp({
-  apiKey: "AIzaSyDBVeYmkce_T3MuOnDSSh6-q1SkG_tMY_c",
-  authDomain: "catalogoj10-9f293.firebaseapp.com",
-  projectId: "catalogoj10-9f293",
-  storageBucket: "catalogoj10-9f293.firebasestorage.app",
-  messagingSenderId: "756032612761",
-  appId: "1:756032612761:web:fa9886a1c9580514408b08"
-});
-const db = firebase.firestore();
-const DOC_REF = db.collection("catalogo").doc("j10_catalogo");
+<!-- Firebase SDK modular via CDN -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const app = initializeApp({
+    apiKey:            "AIzaSyDBVeYmkce_T3MuOnDSSh6-q1SkG_tMY_c",
+    authDomain:        "catalogoj10-9f293.firebaseapp.com",
+    projectId:         "catalogoj10-9f293",
+    storageBucket:     "catalogoj10-9f293.firebasestorage.app",
+    messagingSenderId: "756032612761",
+    appId:             "1:756032612761:web:fa9886a1c9580514408b08"
+  });
+
+  const db         = getFirestore(app);
+  const DOCREF     = doc(db, "catalogo", "j10_catalogo");
+
+  // Exponer al scope global para que Babel/React lo use
+  window.__fbDocRef    = DOCREF;
+  window.__fbSetDoc    = (data) => setDoc(DOCREF, data);
+  window.__fbGetDoc    = ()     => getDoc(DOCREF);
+  window.__fbOnSnapshot = (cb)  => onSnapshot(DOCREF, cb);
+
+  // Señal de que Firebase está listo
+  window.__fbReady = true;
+  window.dispatchEvent(new Event("firebase-ready"));
 </script>
 
 <script type="text/babel">
 const { useState, useMemo, useEffect, useRef } = React;
 
-const DEFAULT_CATEGORIES = [
-  { id:1,  name:"Sala",            icon:"🛋️" },
-  { id:2,  name:"Dormitorio",      icon:"🛏️" },
-  { id:3,  name:"Exterior",        icon:"🌿" },
-  { id:4,  name:"Cocina",          icon:"🍳" },
-  { id:5,  name:"Baño",            icon:"🛁" },
-  { id:6,  name:"Oficina",         icon:"💻" },
-  { id:7,  name:"Iluminación",     icon:"💡" },
-  { id:8,  name:"Decoración",      icon:"🖼️" },
-  { id:9,  name:"Almacenamiento",  icon:"🗄️" },
-  { id:10, name:"Textiles",        icon:"🧶" },
-  { id:11, name:"Jardín",          icon:"🪴" },
-  { id:12, name:"Infantil",        icon:"🧸" },
-  { id:13, name:"Comedor",         icon:"🍽️" },
-  { id:14, name:"Entretenimiento", icon:"🎮" },
-  { id:15, name:"Tecnología",      icon:"📱" },
-  { id:16, name:"Ropa y Moda",     icon:"👗" },
-  { id:17, name:"Accesorios",      icon:"👜" },
-  { id:18, name:"Deportes",        icon:"🏋️" },
-  { id:19, name:"Mascotas",        icon:"🐾" },
-  { id:20, name:"Ofertas",         icon:"🔥" },
+/* ─── Defaults ─── */
+const DEF_CATS = [
+  {id:1, name:"Sala",            icon:"🛋️"},
+  {id:2, name:"Dormitorio",      icon:"🛏️"},
+  {id:3, name:"Exterior",        icon:"🌿"},
+  {id:4, name:"Cocina",          icon:"🍳"},
+  {id:5, name:"Baño",            icon:"🛁"},
+  {id:6, name:"Oficina",         icon:"💻"},
+  {id:7, name:"Iluminación",     icon:"💡"},
+  {id:8, name:"Decoración",      icon:"🖼️"},
+  {id:9, name:"Almacenamiento",  icon:"🗄️"},
+  {id:10,name:"Textiles",        icon:"🧶"},
+  {id:11,name:"Jardín",          icon:"🪴"},
+  {id:12,name:"Infantil",        icon:"🧸"},
+  {id:13,name:"Comedor",         icon:"🍽️"},
+  {id:14,name:"Entretenimiento", icon:"🎮"},
+  {id:15,name:"Tecnología",      icon:"📱"},
+  {id:16,name:"Ropa y Moda",     icon:"👗"},
+  {id:17,name:"Accesorios",      icon:"👜"},
+  {id:18,name:"Deportes",        icon:"🏋️"},
+  {id:19,name:"Mascotas",        icon:"🐾"},
+  {id:20,name:"Ofertas",         icon:"🔥"},
 ];
-
-const DEFAULT_PRODUCTS = [
-  { id:1, catId:1, name:"Sofá Moderno",    imgs:["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"], enabled:true, price:"", description:"", tag:"" },
-  { id:2, catId:1, name:"Mesa de Centro",  imgs:["https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600"], enabled:true, price:"", description:"", tag:"" },
-  { id:4, catId:2, name:"Cama King",       imgs:["https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600"], enabled:true, price:"", description:"", tag:"" },
-  { id:6, catId:3, name:"Silla de Jardín", imgs:["https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=600"], enabled:true, price:"", description:"", tag:"" },
+const DEF_PRODS = [
+  {id:1,catId:1,name:"Sofá Moderno",   imgs:["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"],enabled:true,price:"",description:"",tag:""},
+  {id:2,catId:1,name:"Mesa de Centro", imgs:["https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600"],enabled:true,price:"",description:"",tag:""},
+  {id:4,catId:2,name:"Cama King",      imgs:["https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600"],enabled:true,price:"",description:"",tag:""},
+  {id:6,catId:3,name:"Silla de Jardín",imgs:["https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=600"],enabled:true,price:"",description:"",tag:""},
 ];
-
-const ICONS = ["📦","🛋️","🛏️","🌿","🪑","🚪","🪞","🛁","🍳","💡","🖼️","🧺","🪴","🏡","🛠️","🎨","📐","🪟","🧸","🛒","⭐","🔥","💎","✨","🎁","👔","👗","👟","💍","👜","🕶️","🧴","🍶","🥗","🍕","☕","🎵","📷","💻","📱","🎮","🚗","🌸","🐾","🧩","🗄️","🧶","🍽️","🏋️","🏠","🎀"];
-const DEFAULT_BANNER = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200";
+const DEF_BANNER  = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200";
 const PRESET_TAGS = ["Nuevo","Promo","SALE","Ahorro"];
-const TAG_COLORS = { "Nuevo":"#007aff","Promo":"#ff9500","SALE":"#ff3b30","Ahorro":"#34c759" };
+const TAG_COLORS  = {Nuevo:"#007aff",Promo:"#ff9500",SALE:"#ff3b30",Ahorro:"#34c759"};
+const ICONS = ["📦","🛋️","🛏️","🌿","🪑","🚪","🪞","🛁","🍳","💡","🖼️","🧺","🪴","🏡","🛠️","🎨","📐","🪟","🧸","🛒","⭐","🔥","💎","✨","🎁","👔","👗","👟","💍","👜","🕶️","🧴","🍶","🥗","🍕","☕","🎵","📷","💻","📱","🎮","🚗","🌸","🐾","🧩","🗄️","🧶","🍽️","🏋️","🏠","🎀"];
 
-const toB64 = f => new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
-const pickFile = (accept,multiple,cb)=>{ const i=document.createElement("input"); i.type="file"; i.accept=accept; if(multiple)i.multiple=true; i.onchange=e=>cb(e.target.files); i.click(); };
+/* ─── Helpers ─── */
+const toB64 = f => new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});
+const pickFile = (accept,multi,cb)=>{const i=document.createElement("input");i.type="file";i.accept=accept;if(multi)i.multiple=true;i.onchange=e=>cb(e.target.files);i.click();};
 
-const fbSave = async data => { try { await DOC_REF.set(data); } catch(e){ console.error("Firebase save error:",e); } };
-const fbLoad = async () => { try { const s=await DOC_REF.get(); return s.exists?s.data():null; } catch(e){ console.error("Firebase load error:",e); return null; } };
+// Guardar en Firestore usando la función global expuesta por el módulo ES
+const fbSave = async (data) => {
+  if (!window.__fbSetDoc) { console.warn("Firebase no listo"); return; }
+  try { await window.__fbSetDoc(data); }
+  catch(e){ console.error("Firestore setDoc error:", e); }
+};
 
+// Leer una vez desde Firestore
+const fbLoad = async () => {
+  if (!window.__fbGetDoc) return null;
+  try {
+    const snap = await window.__fbGetDoc();
+    return snap.exists() ? snap.data() : null;
+  } catch(e){ console.error("Firestore getDoc error:", e); return null; }
+};
+
+/* ─── UI components ─── */
 function LogoJ10({size=40,color="#1d1d1f"}){
   return <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
     <path d="M100 8 A92 92 0 0 0 8 100" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
@@ -115,8 +143,8 @@ function Carousel({imgs=[]}){
 
 function ImgPicker({imgs=[],onChange}){
   const [url,setUrl]=useState("");
-  const add = async files=>{ const b=await Promise.all(Array.from(files).map(toB64)); onChange([...imgs,...b]); };
-  const addUrl=()=>{ if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");} };
+  const add=async files=>{const b=await Promise.all(Array.from(files).map(toB64));onChange([...imgs,...b]);};
+  const addUrl=()=>{if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");}};
   const rm=i=>onChange(imgs.filter((_,j)=>j!==i));
   return <div>
     {imgs.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
@@ -158,79 +186,98 @@ function Sec({label,children}){
   </div>;
 }
 
+/* ─── Main App ─── */
 function App(){
-  const [products,setProducts]       = useState(DEFAULT_PRODUCTS);
-  const [categories,setCategories]   = useState(DEFAULT_CATEGORIES);
-  const [whatsapp,setWhatsapp]       = useState("573001234567");
-  const [pass,setPass]               = useState("admin123");
-  const [logo,setLogo]               = useState(null);
-  const [banner,setBanner]           = useState(DEFAULT_BANNER);
-  const [cTags,setCTags]             = useState([]);
-  const [loaded,setLoaded]           = useState(false);
-  const [status,setStatus]           = useState("ok");
-  const [view,setView]               = useState("client");
-  const [activeCat,setActiveCat]     = useState(null);
-  const [search,setSearch]           = useState("");
-  const [selP,setSelP]               = useState(null);
-  const [carI,setCarI]               = useState(0);
-  const [editP,setEditP]             = useState(null);
-  const [lpw,setLpw]                 = useState("");
-  const [lerr,setLerr]               = useState(false);
-  const [editWa,setEditWa]           = useState(false);
-  const [waIn,setWaIn]               = useState("");
-  const [ncName,setNcName]           = useState("");
-  const [ncIcon,setNcIcon]           = useState("📦");
-  const [showIP,setShowIP]           = useState(false);
-  const [editCat,setEditCat]         = useState(null);
-  const [showEIP,setShowEIP]         = useState(false);
-  const [uCat,setUCat]               = useState("");
-  const [uName,setUName]             = useState("");
-  const [uImgs,setUImgs]             = useState([]);
-  const [uPrice,setUPrice]           = useState("");
-  const [uDesc,setUDesc]             = useState("");
-  const [uTag,setUTag]               = useState("");
-  const [chPw,setChPw]               = useState(false);
-  const [npw,setNpw]                 = useState("");
-  const [cpw,setCpw]                 = useState("");
-  const [pErr,setPErr]               = useState("");
-  const [eBanner,setEBanner]         = useState(false);
-  const [ctIn,setCtIn]               = useState("");
-  const saveTimer = useRef(null);
-  const dataSnap  = useRef(null);
+  const [products,  setProducts]  = useState(DEF_PRODS);
+  const [categories,setCategories]= useState(DEF_CATS);
+  const [whatsapp,  setWhatsapp]  = useState("573001234567");
+  const [pass,      setPass]      = useState("admin123");
+  const [logo,      setLogo]      = useState(null);
+  const [banner,    setBanner]    = useState(DEF_BANNER);
+  const [cTags,     setCTags]     = useState([]);
+  const [fbReady,   setFbReady]   = useState(!!window.__fbReady);
+  const [loaded,    setLoaded]    = useState(false);
+  const [status,    setStatus]    = useState("ok"); // ok | pending | saving | error
 
-  // CARGAR desde Firebase
+  const [view,      setView]      = useState("client");
+  const [activeCat, setActiveCat] = useState(null);
+  const [search,    setSearch]    = useState("");
+  const [selP,      setSelP]      = useState(null);
+  const [carI,      setCarI]      = useState(0);
+  const [editP,     setEditP]     = useState(null);
+  const [lpw,       setLpw]       = useState("");
+  const [lerr,      setLerr]      = useState(false);
+  const [editWa,    setEditWa]    = useState(false);
+  const [waIn,      setWaIn]      = useState("");
+  const [ncName,    setNcName]    = useState("");
+  const [ncIcon,    setNcIcon]    = useState("📦");
+  const [showIP,    setShowIP]    = useState(false);
+  const [editCat,   setEditCat]   = useState(null);
+  const [showEIP,   setShowEIP]   = useState(false);
+  const [uCat,      setUCat]      = useState("");
+  const [uName,     setUName]     = useState("");
+  const [uImgs,     setUImgs]     = useState([]);
+  const [uPrice,    setUPrice]    = useState("");
+  const [uDesc,     setUDesc]     = useState("");
+  const [uTag,      setUTag]      = useState("");
+  const [chPw,      setChPw]      = useState(false);
+  const [npw,       setNpw]       = useState("");
+  const [cpw,       setCpw]       = useState("");
+  const [pErr,      setPErr]      = useState("");
+  const [eBanner,   setEBanner]   = useState(false);
+  const [ctIn,      setCtIn]      = useState("");
+
+  const saveTimer = useRef(null);
+  const latestData = useRef(null);
+  const isFirstLoad = useRef(true);
+
+  // Esperar a que Firebase esté listo si todavía no lo está
   useEffect(()=>{
-    fbLoad().then(d=>{
-      if(d){
+    if(window.__fbReady){ setFbReady(true); return; }
+    const handler = ()=>setFbReady(true);
+    window.addEventListener("firebase-ready", handler);
+    return ()=>window.removeEventListener("firebase-ready", handler);
+  },[]);
+
+  // Cargar datos de Firestore con onSnapshot (escucha en tiempo real)
+  useEffect(()=>{
+    if(!fbReady) return;
+    // Usar onSnapshot para escucha en tiempo real
+    const unsub = window.__fbOnSnapshot(snap=>{
+      if(snap.exists()){
+        const d = snap.data();
         if(d.products)    setProducts(d.products);
         if(d.categories)  setCategories(d.categories);
         if(d.whatsapp)    setWhatsapp(d.whatsapp);
         if(d.pass)        setPass(d.pass);
-        if(d.logo)        setLogo(d.logo);
+        if(d.logo!=null)  setLogo(d.logo);
         if(d.banner)      setBanner(d.banner);
         if(d.cTags)       setCTags(d.cTags);
       }
       setLoaded(true);
+      isFirstLoad.current = false;
     });
-  },[]);
+    return ()=>unsub();
+  },[fbReady]);
 
-  // AUTO-GUARDAR con debounce de 1.5s
+  // Auto-guardar con debounce de 1.5s — SOLO después de carga inicial
   useEffect(()=>{
-    if(!loaded) return;
+    if(!loaded || isFirstLoad.current) return;
     const data={products,categories,whatsapp,pass,logo,banner,cTags};
-    dataSnap.current=data;
+    latestData.current = data;
     setStatus("pending");
     if(saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(async()=>{
+    saveTimer.current = setTimeout(async()=>{
       setStatus("saving");
-      await fbSave(dataSnap.current);
+      await fbSave(latestData.current);
       setStatus("ok");
-    },1500);
+    }, 1500);
     return ()=>clearTimeout(saveTimer.current);
-  },[products,categories,whatsapp,pass,logo,banner,cTags,loaded]);
+  },[products,categories,whatsapp,pass,logo,banner,cTags]);
 
-  const updP = fn=>setProducts(p=>fn(p));
-  const updC = fn=>setCategories(c=>fn(c));
+  /* ─── Actions ─── */
+  const updP = fn => setProducts(p=>fn(p));
+  const updC = fn => setCategories(c=>fn(c));
 
   const toggleP  = id=>updP(ps=>ps.map(p=>p.id===id?{...p,enabled:!p.enabled}:p));
   const delP     = id=>updP(ps=>ps.filter(p=>p.id!==id));
@@ -268,8 +315,8 @@ function App(){
     if(npw!==cpw){setPErr("No coinciden");return;}
     setPass(npw);setChPw(false);setNpw("");setCpw("");setPErr("");
   };
-  const addCT=()=>{ if(ctIn.trim()&&!cTags.includes(ctIn.trim())){setCTags(t=>[...t,ctIn.trim()]);} setCtIn(""); };
-  const rmCT=t=>setCTags(ts=>ts.filter(x=>x!==t));
+  const addCT=()=>{ if(ctIn.trim()&&!cTags.includes(ctIn.trim())) setCTags(t=>[...t,ctIn.trim()]); setCtIn(""); };
+  const rmCT =t=> setCTags(ts=>ts.filter(x=>x!==t));
 
   const visible=useMemo(()=>{
     let l=view==="admin"?products:products.filter(p=>p.enabled);
@@ -280,20 +327,26 @@ function App(){
 
   const clientCats=categories.filter(c=>products.some(p=>p.catId===c.id&&p.enabled));
 
+  /* ─── Styles ─── */
   const I={width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid #d1d1d6",fontSize:14,outline:"none",color:"#1d1d1f",background:"#fff",boxSizing:"border-box",marginBottom:10};
   const P={padding:"10px 20px",borderRadius:10,background:"#1d1d1f",color:"#fff",border:"none",fontWeight:600,cursor:"pointer",fontSize:14};
   const G={padding:"10px 20px",borderRadius:10,background:"#f5f5f7",color:"#1d1d1f",border:"none",fontWeight:500,cursor:"pointer",fontSize:14};
 
   const StatusDot=()=>{
-    if(status==="saving") return <span style={{fontSize:12,color:"#007aff"}}>☁️ Guardando...</span>;
+    if(!fbReady)           return <span style={{fontSize:12,color:"#aaa"}}>⏳ Conectando...</span>;
+    if(status==="saving")  return <span style={{fontSize:12,color:"#007aff"}}>☁️ Guardando...</span>;
     if(status==="pending") return <span style={{fontSize:12,color:"#ff9500"}}>● Pendiente</span>;
-    return <span style={{fontSize:12,color:"#34c759"}}>✓ Guardado</span>;
+    if(status==="error")   return <span style={{fontSize:12,color:"#ff3b30"}}>✗ Error al guardar</span>;
+    return <span style={{fontSize:12,color:"#34c759"}}>✓ Guardado en la nube</span>;
   };
 
+  /* ─── Loading screen ─── */
   if(!loaded) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-    <LogoJ10 size={52}/><div style={{color:"#aaa",fontSize:14}}>Conectando con la nube...</div>
+    <LogoJ10 size={52}/>
+    <div style={{color:"#aaa",fontSize:14}}>{fbReady?"Cargando catálogo...":"Conectando con Firebase..."}</div>
   </div>;
 
+  /* ─── Login screen ─── */
   if(view==="login") return <div style={{minHeight:"100vh",background:"#f5f5f7",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <div style={{background:"#fff",borderRadius:20,padding:"48px 40px",width:340,maxWidth:"92vw",boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
       <div style={{textAlign:"center",marginBottom:32}}>
@@ -307,6 +360,7 @@ function App(){
     </div>
   </div>;
 
+  /* ─── Main ─── */
   return <div style={{minHeight:"100vh",background:view==="admin"?"#f5f5f7":"#fff",paddingBottom:80}}>
 
     {/* HEADER */}
@@ -325,7 +379,7 @@ function App(){
       </div>
     </div>
 
-    {/* VISTA CLIENTE */}
+    {/* ── VISTA CLIENTE ── */}
     {view==="client"&&<>
       <div style={{position:"relative",height:360,overflow:"hidden",background:"#1d1d1f"}}>
         {banner&&<img src={banner} alt="banner" style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.5,display:"block"}}/>}
@@ -391,7 +445,7 @@ function App(){
         style={{position:"fixed",bottom:24,right:24,background:"#25d366",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,zIndex:150,boxShadow:"0 4px 20px rgba(37,211,102,0.45)",textDecoration:"none"}}>💬</a>
     </>}
 
-    {/* PANEL ADMIN */}
+    {/* ── PANEL ADMIN ── */}
     {view==="admin"&&<div style={{maxWidth:600,margin:"0 auto",padding:"24px 16px"}}>
 
       <Sec label="Logo de la empresa">
@@ -401,7 +455,7 @@ function App(){
           </div>
           <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,marginBottom:2}}>Logo actual</div><div style={{fontSize:12,color:"#6e6e73"}}>PNG, JPG o SVG</div></div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            <button onClick={()=>pickFile("image/*",false,async f=>{setLogo(await toB64(f[0]));} )} style={{...P,padding:"7px 14px",fontSize:13,borderRadius:10}}>Subir</button>
+            <button onClick={()=>pickFile("image/*",false,async f=>{setLogo(await toB64(f[0]));})} style={{...P,padding:"7px 14px",fontSize:13,borderRadius:10}}>Subir</button>
             {logo&&<button onClick={()=>setLogo(null)} style={{...G,padding:"6px 14px",fontSize:13,borderRadius:10,color:"#ff3b30"}}>Eliminar</button>}
           </div>
         </div>
@@ -446,9 +500,9 @@ function App(){
             </div>
           :<>
               <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nueva contraseña (mín. 6 caracteres)</div>
-              <input type="password" style={I} placeholder="Nueva contraseña" value={npw} onChange={e=>{setNpw(e.target.value);setPErr("");}}/>
+              <input type="password" style={I} value={npw} onChange={e=>{setNpw(e.target.value);setPErr("");}} placeholder="Nueva contraseña"/>
               <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Confirmar</div>
-              <input type="password" style={I} placeholder="Repetir contraseña" value={cpw} onChange={e=>{setCpw(e.target.value);setPErr("");}}/>
+              <input type="password" style={I} value={cpw} onChange={e=>{setCpw(e.target.value);setPErr("");}} placeholder="Repetir contraseña"/>
               {pErr&&<div style={{color:"#ff3b30",fontSize:13,marginBottom:10}}>{pErr}</div>}
               <div style={{display:"flex",gap:8}}>
                 <button style={{...P,flex:1}} onClick={savePw}>Guardar</button>
