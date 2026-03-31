@@ -35,143 +35,79 @@
   const db     = getFirestore(app);
   const DOCREF = doc(db, "catalogo", "j10_catalogo");
 
-  // Sanitizar: elimina undefined, funciones y objetos no serializables
-  const sanitize = (obj) => {
-    try {
-      return JSON.parse(JSON.stringify(obj, (key, val) => {
-        if (val === undefined || typeof val === "function") return null;
-        return val;
-      }));
-    } catch(e) {
-      console.error("[Firebase] Error al sanitizar:", e);
-      return null;
-    }
-  };
-
+  // Guardar: convierte a JSON plano para eliminar undefined y objetos inválidos
   window.__fbSave = async (data) => {
-    const clean = sanitize({
-      products: (data.products || []).map(p => ({
-        id:          p.id          ?? Date.now(),
-        catId:       p.catId       ?? 0,
-        name:        p.name        || "",
-      imgs: (p.imgs || []).filter(i => typeof i === "string" && (i.startsWith("http") || i.startsWith("data:"))),
-        enabled:     p.enabled     ?? true,
-        price:       p.price       || "",
-        description: p.description || "",
-        tag:         p.tag         || "",
-      })),
-      categories: (data.categories || []).map(c => ({
-        id:   c.id   ?? Date.now(),
-        name: c.name || "",
-        icon: c.icon || "📦",
-      })),
-      whatsapp: data.whatsapp || "",
-      pass:     data.pass     || "admin123",
-      logo:     typeof data.logo   === "string" ? data.logo   : null,
-      banner:   typeof data.banner === "string" ? data.banner : "",
-      cTags:    (data.cTags || []).filter(t => typeof t === "string"),
-    });
-
-    if (!clean) { console.error("[Firebase] Datos inválidos, no se guardó"); return false; }
-
     try {
+      const clean = JSON.parse(JSON.stringify(data));
       await setDoc(DOCREF, clean);
-      console.log("[Firebase] setDoc OK — productos:", clean.products.length, "| categorias:", clean.categories.length);
+      console.log("[FB] Guardado OK — productos:", clean.products?.length);
       return true;
     } catch(e) {
-      console.error("[Firebase] setDoc ERROR:", e.message);
+      console.error("[FB] Error al guardar:", e.message);
       return false;
     }
   };
 
-  window.__fbSubscribe = (cb) => {
-    console.log("[Firebase] Iniciando onSnapshot...");
-    return onSnapshot(DOCREF,
-      snap => {
-        if (snap.exists()) {
-          const d = snap.data();
-          console.log("[Firebase] onSnapshot OK | productos:", d.products?.length, "| categorias:", d.categories?.length);
-          cb({ ok: true, data: d });
-        } else {
-          console.warn("[Firebase] Documento vacío — primera vez");
-          cb({ ok: false, data: null });
-        }
-      },
-      err => {
-        console.error("[Firebase] onSnapshot ERROR:", err.message);
-        cb({ ok: false, data: null });
-      }
-    );
-  };
+  // Escucha en tiempo real
+  window.__fbSub = (cb) => onSnapshot(DOCREF,
+    snap => cb(snap.exists() ? snap.data() : null),
+    err  => { console.error("[FB] onSnapshot error:", err.message); cb(null); }
+  );
 
   window.__fbReady = true;
   window.dispatchEvent(new Event("firebase-ready"));
-  console.log("[Firebase] Listo ✓");
+  console.log("[FB] SDK listo ✓");
 </script>
 
 <script type="text/babel">
 const { useState, useMemo, useEffect, useRef } = React;
 
+/* ── Defaults ── */
 const DEF_CATS = [
-  {id:1,  name:"Sala",            icon:"🛋️"},
-  {id:2,  name:"Dormitorio",      icon:"🛏️"},
-  {id:3,  name:"Exterior",        icon:"🌿"},
-  {id:4,  name:"Cocina",          icon:"🍳"},
-  {id:5,  name:"Baño",            icon:"🛁"},
-  {id:6,  name:"Oficina",         icon:"💻"},
-  {id:7,  name:"Iluminación",     icon:"💡"},
-  {id:8,  name:"Decoración",      icon:"🖼️"},
-  {id:9,  name:"Almacenamiento",  icon:"🗄️"},
-  {id:10, name:"Textiles",        icon:"🧶"},
-  {id:11, name:"Jardín",          icon:"🪴"},
-  {id:12, name:"Infantil",        icon:"🧸"},
-  {id:13, name:"Comedor",         icon:"🍽️"},
-  {id:14, name:"Entretenimiento", icon:"🎮"},
-  {id:15, name:"Tecnología",      icon:"📱"},
-  {id:16, name:"Ropa y Moda",     icon:"👗"},
-  {id:17, name:"Accesorios",      icon:"👜"},
-  {id:18, name:"Deportes",        icon:"🏋️"},
-  {id:19, name:"Mascotas",        icon:"🐾"},
-  {id:20, name:"Ofertas",         icon:"🔥"},
+  {id:1,name:"Sala",icon:"🛋️"},{id:2,name:"Dormitorio",icon:"🛏️"},{id:3,name:"Exterior",icon:"🌿"},
+  {id:4,name:"Cocina",icon:"🍳"},{id:5,name:"Baño",icon:"🛁"},{id:6,name:"Oficina",icon:"💻"},
+  {id:7,name:"Iluminación",icon:"💡"},{id:8,name:"Decoración",icon:"🖼️"},{id:9,name:"Almacenamiento",icon:"🗄️"},
+  {id:10,name:"Textiles",icon:"🧶"},{id:11,name:"Jardín",icon:"🪴"},{id:12,name:"Infantil",icon:"🧸"},
+  {id:13,name:"Comedor",icon:"🍽️"},{id:14,name:"Entretenimiento",icon:"🎮"},{id:15,name:"Tecnología",icon:"📱"},
+  {id:16,name:"Ropa y Moda",icon:"👗"},{id:17,name:"Accesorios",icon:"👜"},{id:18,name:"Deportes",icon:"🏋️"},
+  {id:19,name:"Mascotas",icon:"🐾"},{id:20,name:"Ofertas",icon:"🔥"},
 ];
 const DEF_PRODS = [
-  {id:1,catId:1,name:"Sofá Moderno",   imgs:["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"],enabled:true,price:"",description:"",tag:""},
-  {id:2,catId:1,name:"Mesa de Centro", imgs:["https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600"],enabled:true,price:"",description:"",tag:""},
-  {id:4,catId:2,name:"Cama King",      imgs:["https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600"],enabled:true,price:"",description:"",tag:""},
+  {id:1,catId:1,name:"Sofá Moderno",imgs:["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"],enabled:true,price:"",description:"",tag:""},
+  {id:2,catId:1,name:"Mesa de Centro",imgs:["https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600"],enabled:true,price:"",description:"",tag:""},
+  {id:4,catId:2,name:"Cama King",imgs:["https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600"],enabled:true,price:"",description:"",tag:""},
   {id:6,catId:3,name:"Silla de Jardín",imgs:["https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=600"],enabled:true,price:"",description:"",tag:""},
 ];
-const DEF_STATE = {
-  products: DEF_PRODS,
-  categories: DEF_CATS,
-  whatsapp: "573001234567",
-  pass: "admin123",
-  logo: null,
-  banner: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200",
-  cTags: []
-};
+const DEF_BANNER  = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200";
 const PRESET_TAGS = ["Nuevo","Promo","SALE","Ahorro"];
 const TAG_COLORS  = {Nuevo:"#007aff",Promo:"#ff9500",SALE:"#ff3b30",Ahorro:"#34c759"};
 const ICONS = ["📦","🛋️","🛏️","🌿","🪑","🚪","🪞","🛁","🍳","💡","🖼️","🧺","🪴","🏡","🛠️","🎨","📐","🪟","🧸","🛒","⭐","🔥","💎","✨","🎁","👔","👗","👟","💍","👜","🕶️","🧴","🍶","🥗","🍕","☕","🎵","📷","💻","📱","🎮","🚗","🌸","🐾","🧩","🗄️","🧶","🍽️","🏋️","🏠","🎀"];
 
-// Comprimir imagen base64 antes de guardar
-const compressImage = (base64, maxWidth=800, quality=0.7) => new Promise(res => {
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    const ratio = Math.min(1, maxWidth / img.width);
-    canvas.width  = img.width  * ratio;
-    canvas.height = img.height * ratio;
-    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-    res(canvas.toDataURL("image/jpeg", quality));
-  };
-  img.onerror = () => res(base64); // si falla, devolver original
-  img.src = base64;
+/* ── Helpers ── */
+const toB64 = f => new Promise((res,rej)=>{
+  const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f);
 });
 
-const toB64 = f => new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});
-const pickFile = (accept,multi,cb)=>{const i=document.createElement("input");i.type="file";i.accept=accept;if(multi)i.multiple=true;i.onchange=e=>cb(e.target.files);i.click();};
+// Comprimir imagen a máx 600px, calidad 0.6 para no exceder límite Firestore 1MB
+const compressB64 = (b64, maxW=600, q=0.6) => new Promise(res=>{
+  const img=new Image();
+  img.onload=()=>{
+    const ratio=Math.min(1,maxW/img.width);
+    const c=document.createElement("canvas");
+    c.width=img.width*ratio; c.height=img.height*ratio;
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    res(c.toDataURL("image/jpeg",q));
+  };
+  img.onerror=()=>res(b64);
+  img.src=b64;
+});
 
-/* ── Componentes UI ── */
+const pickFile=(accept,multi,cb)=>{
+  const i=document.createElement("input");i.type="file";i.accept=accept;
+  if(multi)i.multiple=true;i.onchange=e=>cb(e.target.files);i.click();
+};
+
+/* ── Componentes ── */
 function LogoJ10({size=40,color="#1d1d1f"}){
   return <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
     <path d="M100 8 A92 92 0 0 0 8 100" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
@@ -209,12 +145,12 @@ function Carousel({imgs=[]}){
 
 function ImgPicker({imgs=[],onChange}){
   const [url,setUrl]=useState("");
-  const add = async files => {
-    const raw  = await Promise.all(Array.from(files).map(toB64));
-    const compressed = await Promise.all(raw.map(b64 => compressImage(b64)));
-    onChange([...imgs, ...compressed]);
+  const add=async files=>{
+    const raw=await Promise.all(Array.from(files).map(toB64));
+    const compressed=await Promise.all(raw.map(b=>compressB64(b)));
+    onChange([...imgs,...compressed]);
   };
-  const addUrl=()=>{if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");}};
+  const addUrl=()=>{ if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");} };
   const rm=i=>onChange(imgs.filter((_,j)=>j!==i));
   return <div>
     {imgs.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
@@ -256,18 +192,22 @@ function Sec({label,children}){
   </div>;
 }
 
-/* ── App Principal ── */
+/* ── App ── */
 function App(){
-  const [products,  setProducts]  = useState(DEF_STATE.products);
-  const [categories,setCategories]= useState(DEF_STATE.categories);
-  const [whatsapp,  setWhatsapp]  = useState(DEF_STATE.whatsapp);
-  const [pass,      setPass]      = useState(DEF_STATE.pass);
-  const [logo,      setLogo]      = useState(DEF_STATE.logo);
-  const [banner,    setBanner]    = useState(DEF_STATE.banner);
-  const [cTags,     setCTags]     = useState(DEF_STATE.cTags);
+  // Estado principal — se carga desde Firebase al inicio
+  const [products,  setProducts]  = useState(DEF_PRODS);
+  const [categories,setCategories]= useState(DEF_CATS);
+  const [whatsapp,  setWhatsapp]  = useState("573001234567");
+  const [pass,      setPass]      = useState("admin123");
+  const [logo,      setLogo]      = useState(null);
+  const [banner,    setBanner]    = useState(DEF_BANNER);
+  const [cTags,     setCTags]     = useState([]);
+
   const [fbReady,   setFbReady]   = useState(!!window.__fbReady);
   const [loaded,    setLoaded]    = useState(false);
   const [status,    setStatus]    = useState("ok");
+
+  // UI state
   const [view,      setView]      = useState("client");
   const [activeCat, setActiveCat] = useState(null);
   const [search,    setSearch]    = useState("");
@@ -296,12 +236,13 @@ function App(){
   const [eBanner,   setEBanner]   = useState(false);
   const [ctIn,      setCtIn]      = useState("");
 
-  const saveTimer   = useRef(null);
-  const latestData  = useRef(null);
-  const skipSave    = useRef(true);
-  const isSaving    = useRef(false); // bloquea onSnapshot durante guardado activo
+  // Refs para controlar el flujo de guardado
+  const debounceTimer  = useRef(null);
+  const currentData    = useRef(null);
+  const blockSnapshot  = useRef(true); // bloquea onSnapshot hasta que cargue
+  const initialized    = useRef(false);
 
-  // Esperar Firebase SDK
+  /* ── Firebase: esperar SDK ── */
   useEffect(()=>{
     if(window.__fbReady){ setFbReady(true); return; }
     const h=()=>setFbReady(true);
@@ -309,119 +250,107 @@ function App(){
     return ()=>window.removeEventListener("firebase-ready",h);
   },[]);
 
-  // Suscripción onSnapshot — única fuente de verdad
+  /* ── Firebase: suscripción onSnapshot ── */
   useEffect(()=>{
     if(!fbReady) return;
-    const unsub = window.__fbSubscribe(({ok,data})=>{
-      skipSave.current = true; // bloquear auto-save mientras actualizamos estado
-      if(ok && data){
-        if(Array.isArray(data.products))   setProducts(data.products);
-        if(Array.isArray(data.categories)) setCategories(data.categories);
-        if(data.whatsapp)  setWhatsapp(data.whatsapp);
-        if(data.pass)      setPass(data.pass);
-        setLogo(data.logo ?? null);
-        if(data.banner)    setBanner(data.banner);
-        if(Array.isArray(data.cTags)) setCTags(data.cTags);
-      } else {
-        // Primera vez: guardar defaults en Firebase
-        console.log("[App] Primera vez — guardando defaults en Firebase...");
-        window.__fbSave(DEF_STATE);
+    const unsub = window.__fbSub(data=>{
+      if(blockSnapshot.current){
+        // Primera carga: aplicar datos de Firebase al estado
+        if(data){
+          if(Array.isArray(data.products))   setProducts(data.products);
+          if(Array.isArray(data.categories)) setCategories(data.categories);
+          if(data.whatsapp)  setWhatsapp(data.whatsapp);
+          if(data.pass)      setPass(data.pass);
+          setLogo(data.logo||null);
+          if(data.banner)    setBanner(data.banner);
+          if(Array.isArray(data.cTags)) setCTags(data.cTags);
+        } else {
+          // Primera vez: guardar defaults
+          window.__fbSave({products:DEF_PRODS,categories:DEF_CATS,whatsapp:"573001234567",pass:"admin123",logo:null,banner:DEF_BANNER,cTags:[]});
+        }
+        setLoaded(true);
+        initialized.current = true;
+        // Desbloquear snapshot después de que React aplique los setState
+        setTimeout(()=>{ blockSnapshot.current = false; }, 500);
       }
-      setLoaded(true);
-      // Permitir auto-save después de 300ms (esperar que React aplique todos los setState)
-      setTimeout(()=>{ skipSave.current = false; }, 300);
+      // Snapshots posteriores: ignorar (el auto-save ya maneja la sincronización)
     });
     return ()=>unsub();
   },[fbReady]);
 
-  // Auto-save con debounce 1.5s
-  useEffect(()=>{
-    if(!loaded || skipSave.current) return;
-    const data={products,categories,whatsapp,pass,logo,banner,cTags};
-    latestData.current = data;
+  /* ── Auto-save con debounce: guarda cuando el estado cambia ── */
+  const doSave = (prods, cats, wa, pw, lg, bn, ct) => {
+    if(!initialized.current) return;
+    const data = {products:prods,categories:cats,whatsapp:wa,pass:pw,logo:lg,banner:bn,cTags:ct};
+    currentData.current = data;
     setStatus("pending");
-    if(saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async()=>{
+    if(debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async()=>{
       setStatus("saving");
-      await window.__fbSave(latestData.current);
-      setStatus("ok");
+      const ok = await window.__fbSave(currentData.current);
+      setStatus(ok?"ok":"error");
     }, 1500);
-    return ()=>clearTimeout(saveTimer.current);
-  },[products,categories,whatsapp,pass,logo,banner,cTags,loaded]);
+  };
+
+  // Wrappers que actualizan estado Y disparan guardado
+  const setAndSaveProducts = (newProds) => {
+    setProducts(newProds);
+    doSave(newProds, categories, whatsapp, pass, logo, banner, cTags);
+  };
+  const setAndSaveCategories = (newCats) => {
+    setCategories(newCats);
+    doSave(products, newCats, whatsapp, pass, logo, banner, cTags);
+  };
+  const setAndSaveWhatsapp = (v) => {
+    setWhatsapp(v);
+    doSave(products, categories, v, pass, logo, banner, cTags);
+  };
+  const setAndSavePass = (v) => {
+    setPass(v);
+    doSave(products, categories, whatsapp, v, logo, banner, cTags);
+  };
+  const setAndSaveLogo = (v) => {
+    setLogo(v);
+    doSave(products, categories, whatsapp, pass, v, banner, cTags);
+  };
+  const setAndSaveBanner = (v) => {
+    setBanner(v);
+    doSave(products, categories, whatsapp, pass, logo, v, cTags);
+  };
+  const setAndSaveCTags = (v) => {
+    setCTags(v);
+    doSave(products, categories, whatsapp, pass, logo, banner, v);
+  };
 
   /* ── Acciones ── */
-  const updP=fn=>setProducts(p=>fn(p));
-  const updC=fn=>setCategories(c=>fn(c));
-
-  const toggleP=id=>updP(ps=>ps.map(p=>p.id===id?{...p,enabled:!p.enabled}:p));
-  const delP   =id=>updP(ps=>ps.filter(p=>p.id!==id));
-  const saveEdit=()=>{
+  const toggleP  = id => setAndSaveProducts(products.map(p=>p.id===id?{...p,enabled:!p.enabled}:p));
+  const delP     = id => setAndSaveProducts(products.filter(p=>p.id!==id));
+  const saveEdit = () => {
     if(!editP?.name.trim()||!editP?.imgs?.length) return;
-    updP(ps=>ps.map(p=>p.id===editP.id?{...p,...editP}:p));
+    setAndSaveProducts(products.map(p=>p.id===editP.id?{...p,...editP}:p));
     setEditP(null);
   };
-  const addP = async () => {
-    if (!uName.trim() || !uImgs.length || !uCat) return;
-    const np = {
-      id:          Date.now(),
-      catId:       parseInt(uCat),
-      name:        uName.trim(),
-      imgs:        uImgs,
-      enabled:     true,
-      price:       uPrice.trim(),
-      description: uDesc.trim(),
-      tag:         uTag || "",
-    };
-    console.log("[App] Intentando guardar producto:", np.name, "ID:", np.id);
-
-    // 1. Agregar al estado local (optimista)
-    const newProducts = [...products, np];
-    setProducts(newProducts);
-
-    // 2. Guardar en Firebase INMEDIATAMENTE (sin esperar debounce)
-    isSaving.current = true; // bloquear onSnapshot durante el guardado
-    const dataToSave = {
-      products:   newProducts,
-      categories,
-      whatsapp,
-      pass,
-      logo,
-      banner,
-      cTags,
-    };
-
-    const saved = await window.__fbSave(dataToSave);
-
-    isSaving.current = false; // permitir onSnapshot de nuevo
-
-    if (saved) {
-      // 3. Solo limpiar si Firebase confirmó el guardado
-      console.log("[App] Guardado exitoso — limpiando formulario");
-      setUName(""); setUImgs([]); setUCat("");
-      setUPrice(""); setUDesc(""); setUTag("");
-    } else {
-      // 4. Si falló, revertir el estado y avisar al usuario
-      console.error("[App] Falló el guardado — revirtiendo estado");
-      setProducts(products); // revertir al estado anterior
-      alert("❌ Error al guardar el producto. Por favor intenta de nuevo.");
-    }
+  const addP = () => {
+    if(!uName.trim()||!uImgs.length||!uCat) return;
+    const np={id:Date.now(),catId:parseInt(uCat),name:uName.trim(),imgs:uImgs,enabled:true,price:uPrice.trim(),description:uDesc.trim(),tag:uTag||""};
+    console.log("[App] Agregando producto:",np.name,"ID:",np.id);
+    setAndSaveProducts([...products,np]);
+    setUName("");setUImgs([]);setUCat("");setUPrice("");setUDesc("");setUTag("");
   };
-  const addCat=()=>{
+  const addCat = () => {
     if(!ncName.trim()) return;
-    const nc={id:Date.now(),name:ncName.trim(),icon:ncIcon};
-    console.log("[App] Nueva categoría — ID:",nc.id,"Nombre:",nc.name);
-    updC(cs=>[...cs,nc]);
+    setAndSaveCategories([...categories,{id:Date.now(),name:ncName.trim(),icon:ncIcon}]);
     setNcName("");setNcIcon("📦");setShowIP(false);
   };
-  const saveEC=()=>{
+  const saveEC = () => {
     if(!editCat?.name.trim()) return;
-    updC(cs=>cs.map(c=>c.id===editCat.id?{...c,name:editCat.name.trim(),icon:editCat.icon}:c));
+    setAndSaveCategories(categories.map(c=>c.id===editCat.id?{...c,name:editCat.name.trim(),icon:editCat.icon}:c));
     setEditCat(null);setShowEIP(false);
   };
-  const delCat=id=>{
-    updC(cs=>cs.filter(c=>c.id!==id));
-    updP(ps=>ps.filter(p=>p.catId!==id));
-    if(activeCat===id)setActiveCat(null);
+  const delCat = id => {
+    setAndSaveCategories(categories.filter(c=>c.id!==id));
+    setAndSaveProducts(products.filter(p=>p.catId!==id));
+    if(activeCat===id) setActiveCat(null);
   };
   const login=()=>{
     if(lpw===pass){setView("admin");setLerr(false);setLpw("");}
@@ -430,15 +359,18 @@ function App(){
   const savePw=()=>{
     if(npw.length<6){setPErr("Mínimo 6 caracteres");return;}
     if(npw!==cpw){setPErr("No coinciden");return;}
-    setPass(npw);setChPw(false);setNpw("");setCpw("");setPErr("");
+    setAndSavePass(npw);setChPw(false);setNpw("");setCpw("");setPErr("");
   };
-  const addCT=()=>{if(ctIn.trim()&&!cTags.includes(ctIn.trim()))setCTags(t=>[...t,ctIn.trim()]);setCtIn("");};
-  const rmCT =t=>setCTags(ts=>ts.filter(x=>x!==t));
+  const addCT=()=>{
+    if(ctIn.trim()&&!cTags.includes(ctIn.trim())) setAndSaveCTags([...cTags,ctIn.trim()]);
+    setCtIn("");
+  };
+  const rmCT=t=>setAndSaveCTags(cTags.filter(x=>x!==t));
 
   const visible=useMemo(()=>{
     let l=view==="admin"?[...products]:products.filter(p=>p.enabled===true);
-    if(activeCat!=null)l=l.filter(p=>p.catId===activeCat);
-    if(search.trim())l=l.filter(p=>p.name.toLowerCase().includes(search.toLowerCase()));
+    if(activeCat!=null) l=l.filter(p=>p.catId===activeCat);
+    if(search.trim()) l=l.filter(p=>p.name.toLowerCase().includes(search.toLowerCase()));
     return l;
   },[products,activeCat,search,view]);
 
@@ -452,6 +384,7 @@ function App(){
     if(!fbReady)           return <span style={{fontSize:12,color:"#aaa"}}>⏳ Conectando...</span>;
     if(status==="saving")  return <span style={{fontSize:12,color:"#007aff"}}>☁️ Guardando...</span>;
     if(status==="pending") return <span style={{fontSize:12,color:"#ff9500"}}>● Pendiente</span>;
+    if(status==="error")   return <span style={{fontSize:12,color:"#ff3b30"}}>✗ Error</span>;
     return <span style={{fontSize:12,color:"#34c759"}}>✓ En la nube</span>;
   };
 
@@ -496,7 +429,7 @@ function App(){
         </div>
       </div>
 
-      {/* VISTA CLIENTE */}
+      {/* CLIENTE */}
       {view==="client"&&<>
         <div style={{position:"relative",height:360,overflow:"hidden",background:"#1d1d1f"}}>
           {banner&&<img src={banner} alt="banner" style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.5,display:"block"}}/>}
@@ -508,7 +441,6 @@ function App(){
             <div style={{fontSize:14,color:"rgba(255,255,255,0.7)",maxWidth:340,lineHeight:1.6}}>Los mejores productos seleccionados para ti</div>
           </div>
         </div>
-
         <div style={{borderBottom:"1px solid #e5e5ea"}}>
           <div style={{display:"flex",justifyContent:"center",overflowX:"auto",maxWidth:960,margin:"0 auto"}}>
             {[{id:null,name:"Todos",icon:""},...clientCats].map(c=>{
@@ -520,14 +452,12 @@ function App(){
             })}
           </div>
         </div>
-
         <div style={{maxWidth:960,margin:"22px auto 16px",padding:"0 16px"}}>
           <div style={{position:"relative",maxWidth:460}}>
             <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#aaa"}}>🔍</span>
             <input style={{...I,paddingLeft:40,marginBottom:0,background:"#f5f5f7",border:"1px solid transparent",borderRadius:12}} placeholder="Buscar productos..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
         </div>
-
         <div style={{maxWidth:960,margin:"0 auto",padding:"0 16px"}}>
           {visible.length>0&&<div style={{fontSize:12,color:"#6e6e73",marginBottom:14}}>{visible.length} producto{visible.length!==1?"s":""}</div>}
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
@@ -553,7 +483,6 @@ function App(){
             </div>}
           </div>
         </div>
-
         <div style={{background:"#1d1d1f",color:"#fff",textAlign:"center",padding:"36px 24px",marginTop:56}}>
           <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><LogoJ10 size={36} color="#fff"/></div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",letterSpacing:1}}>Distribuciones J10 — Todos los derechos reservados</div>
@@ -562,9 +491,8 @@ function App(){
           style={{position:"fixed",bottom:24,right:24,background:"#25d366",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,zIndex:150,boxShadow:"0 4px 20px rgba(37,211,102,0.45)",textDecoration:"none"}}>💬</a>
       </>}
 
-      {/* PANEL ADMIN */}
+      {/* ADMIN */}
       {view==="admin"&&<div style={{maxWidth:600,margin:"0 auto",padding:"24px 16px"}}>
-
         <Sec label="Logo de la empresa">
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <div style={{width:60,height:60,borderRadius:12,background:"#f5f5f7",border:"1px solid #e5e5ea",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
@@ -572,8 +500,8 @@ function App(){
             </div>
             <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,marginBottom:2}}>Logo actual</div><div style={{fontSize:12,color:"#6e6e73"}}>PNG, JPG o SVG</div></div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              <button onClick={()=>pickFile("image/*",false,async f=>{setLogo(await toB64(f[0]));})} style={{...P,padding:"7px 14px",fontSize:13,borderRadius:10}}>Subir</button>
-              {logo&&<button onClick={()=>setLogo(null)} style={{...G,padding:"6px 14px",fontSize:13,borderRadius:10,color:"#ff3b30"}}>Eliminar</button>}
+              <button onClick={()=>pickFile("image/*",false,async f=>{const b=await toB64(f[0]);const c=await compressB64(b);setAndSaveLogo(c);})} style={{...P,padding:"7px 14px",fontSize:13,borderRadius:10}}>Subir</button>
+              {logo&&<button onClick={()=>setAndSaveLogo(null)} style={{...G,padding:"6px 14px",fontSize:13,borderRadius:10,color:"#ff3b30"}}>Eliminar</button>}
             </div>
           </div>
         </Sec>
@@ -585,13 +513,13 @@ function App(){
           </div>
           <div style={{display:"flex",gap:8,marginBottom:eBanner?12:0}}>
             <button onClick={()=>setEBanner(v=>!v)} style={{...P,flex:1,padding:11,borderRadius:12,fontSize:13}}>🖼️ {eBanner?"Cancelar":"Cambiar banner"}</button>
-            {banner&&<button onClick={()=>{setBanner("");setEBanner(false);}} style={{...G,padding:"11px 14px",borderRadius:12,fontSize:13,color:"#ff3b30"}}>🗑 Eliminar</button>}
+            {banner&&<button onClick={()=>{setAndSaveBanner("");setEBanner(false);}} style={{...G,padding:"11px 14px",borderRadius:12,fontSize:13,color:"#ff3b30"}}>🗑 Eliminar</button>}
           </div>
           {eBanner&&<div style={{marginTop:8}}>
-            <button onClick={()=>pickFile("image/*",false,async f=>{setBanner(await toB64(f[0]));setEBanner(false);})} style={{...P,width:"100%",padding:11,borderRadius:12,fontSize:13,marginBottom:8}}>📁 Subir archivo</button>
+            <button onClick={()=>pickFile("image/*",false,async f=>{const b=await toB64(f[0]);const c=await compressB64(b);setAndSaveBanner(c);setEBanner(false);})} style={{...P,width:"100%",padding:11,borderRadius:12,fontSize:13,marginBottom:8}}>📁 Subir archivo</button>
             <div style={{display:"flex",gap:8}}>
               <input id="bnUrl" style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="O pega URL..."/>
-              <button onClick={()=>{const v=document.getElementById("bnUrl").value.trim();if(v){setBanner(v);setEBanner(false);}}} style={{...P,padding:"11px 14px",borderRadius:12,fontSize:13}}>OK</button>
+              <button onClick={()=>{const v=document.getElementById("bnUrl").value.trim();if(v){setAndSaveBanner(v);setEBanner(false);}}} style={{...P,padding:"11px 14px",borderRadius:12,fontSize:13}}>OK</button>
             </div>
           </div>}
         </Sec>
@@ -632,7 +560,7 @@ function App(){
           {editWa
             ?<div style={{display:"flex",gap:8}}>
                 <input style={{...I,marginBottom:0,flex:1}} value={waIn} onChange={e=>setWaIn(e.target.value)} placeholder="ej: 573001234567"/>
-                <button style={P} onClick={()=>{setWhatsapp(waIn);setEditWa(false);}}>Guardar</button>
+                <button style={P} onClick={()=>{setAndSaveWhatsapp(waIn);setEditWa(false);}}>Guardar</button>
               </div>
             :<div style={{display:"flex",alignItems:"center"}}>
                 <div style={{flex:1,fontSize:15}}>💬 +{whatsapp}</div>
@@ -692,7 +620,9 @@ function App(){
           <TagSel value={uTag} onChange={setUTag} customTags={cTags}/>
           <div style={{fontSize:13,color:"#6e6e73",margin:"12px 0 6px"}}>Fotos * (puedes agregar varias)</div>
           <ImgPicker imgs={uImgs} onChange={setUImgs}/>
-          <button onClick={addP} style={{...P,width:"100%",padding:13,borderRadius:12,marginTop:12,fontSize:14,opacity:(!uName.trim()||!uImgs.length||!uCat)?0.4:1}}>Agregar al catálogo</button>
+          <button onClick={addP} style={{...P,width:"100%",padding:13,borderRadius:12,marginTop:12,fontSize:14,opacity:(!uName.trim()||!uImgs.length||!uCat)?0.4:1}}>
+            Agregar al catálogo
+          </button>
         </Sec>
 
         <div style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#6e6e73",marginBottom:10,borderBottom:"1px solid #e5e5ea",paddingBottom:8}}>Productos ({products.length})</div>
@@ -721,7 +651,7 @@ function App(){
         </div>
       </div>}
 
-      {/* MODAL EDITAR PRODUCTO */}
+      {/* MODAL EDITAR */}
       {editP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setEditP(null)}>
         <div style={{background:"#fff",borderRadius:20,padding:24,width:400,maxWidth:"95vw",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
           <div style={{fontSize:17,fontWeight:700,marginBottom:18}}>Editar producto</div>
@@ -746,7 +676,7 @@ function App(){
         </div>
       </div>}
 
-      {/* MODAL DETALLE PRODUCTO */}
+      {/* MODAL DETALLE */}
       {selP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setSelP(null)}>
         <div style={{background:"#fff",borderRadius:24,overflow:"hidden",maxWidth:440,width:"100%",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
           <div style={{position:"relative",background:"#fff",padding:12}}>
