@@ -35,12 +35,50 @@
   const db     = getFirestore(app);
   const DOCREF = doc(db, "catalogo", "j10_catalogo");
 
-  window.__fbSave = async (data) => {
+  // Sanitizar: elimina undefined, funciones y objetos no serializables
+  const sanitize = (obj) => {
     try {
-      await setDoc(DOCREF, data);
-      console.log("[Firebase] setDoc OK — ID: j10_catalogo | productos:", data.products?.length, "| categorias:", data.categories?.length);
+      return JSON.parse(JSON.stringify(obj, (key, val) => {
+        if (val === undefined || typeof val === "function") return null;
+        return val;
+      }));
     } catch(e) {
-      console.error("[Firebase] setDoc ERROR:", e);
+      console.error("[Firebase] Error al sanitizar:", e);
+      return null;
+    }
+  };
+
+  window.__fbSave = async (data) => {
+    const clean = sanitize({
+      products: (data.products || []).map(p => ({
+        id:          p.id          ?? Date.now(),
+        catId:       p.catId       ?? 0,
+        name:        p.name        || "",
+        imgs:        (p.imgs || []).filter(i => typeof i === "string" && i.startsWith("http") || i.startsWith("data:")),
+        enabled:     p.enabled     ?? true,
+        price:       p.price       || "",
+        description: p.description || "",
+        tag:         p.tag         || "",
+      })),
+      categories: (data.categories || []).map(c => ({
+        id:   c.id   ?? Date.now(),
+        name: c.name || "",
+        icon: c.icon || "📦",
+      })),
+      whatsapp: data.whatsapp || "",
+      pass:     data.pass     || "admin123",
+      logo:     typeof data.logo   === "string" ? data.logo   : null,
+      banner:   typeof data.banner === "string" ? data.banner : "",
+      cTags:    (data.cTags || []).filter(t => typeof t === "string"),
+    });
+
+    if (!clean) { console.error("[Firebase] Datos inválidos, no se guardó"); return; }
+
+    try {
+      await setDoc(DOCREF, clean);
+      console.log("[Firebase] setDoc OK — productos:", clean.products.length, "| categorias:", clean.categories.length);
+    } catch(e) {
+      console.error("[Firebase] setDoc ERROR:", e.message);
     }
   };
 
