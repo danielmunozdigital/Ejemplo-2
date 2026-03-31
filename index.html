@@ -279,7 +279,8 @@ function App(){
 
   const saveTimer   = useRef(null);
   const latestData  = useRef(null);
-  const skipSave    = useRef(true); // true durante carga inicial
+  const skipSave    = useRef(true);
+  const isSaving    = useRef(false); // bloquea onSnapshot durante guardado activo
 
   // Esperar Firebase SDK
   useEffect(()=>{
@@ -359,6 +360,7 @@ function App(){
     setProducts(newProducts);
 
     // 2. Guardar en Firebase INMEDIATAMENTE (sin esperar debounce)
+    isSaving.current = true; // bloquear onSnapshot durante el guardado
     const dataToSave = {
       products:   newProducts,
       categories,
@@ -370,6 +372,8 @@ function App(){
     };
 
     const saved = await window.__fbSave(dataToSave);
+
+    isSaving.current = false; // permitir onSnapshot de nuevo
 
     if (saved) {
       // 3. Solo limpiar si Firebase confirmó el guardado
