@@ -72,13 +72,15 @@
       cTags:    (data.cTags || []).filter(t => typeof t === "string"),
     });
 
-    if (!clean) { console.error("[Firebase] Datos inválidos, no se guardó"); return; }
+    if (!clean) { console.error("[Firebase] Datos inválidos, no se guardó"); return false; }
 
     try {
       await setDoc(DOCREF, clean);
       console.log("[Firebase] setDoc OK — productos:", clean.products.length, "| categorias:", clean.categories.length);
+      return true;
     } catch(e) {
       console.error("[Firebase] setDoc ERROR:", e.message);
+      return false;
     }
   };
 
@@ -338,12 +340,48 @@ function App(){
     updP(ps=>ps.map(p=>p.id===editP.id?{...p,...editP}:p));
     setEditP(null);
   };
-  const addP=()=>{
-    if(!uName.trim()||!uImgs.length||!uCat) return;
-    const np={id:Date.now(),catId:parseInt(uCat),name:uName.trim(),imgs:uImgs,enabled:true,price:uPrice.trim(),description:uDesc.trim(),tag:uTag};
-    console.log("[App] Nuevo producto — ID:",np.id,"Nombre:",np.name);
-    updP(ps=>[...ps,np]);
-    setUName("");setUImgs([]);setUCat("");setUPrice("");setUDesc("");setUTag("");
+  const addP = async () => {
+    if (!uName.trim() || !uImgs.length || !uCat) return;
+    const np = {
+      id:          Date.now(),
+      catId:       parseInt(uCat),
+      name:        uName.trim(),
+      imgs:        uImgs,
+      enabled:     true,
+      price:       uPrice.trim(),
+      description: uDesc.trim(),
+      tag:         uTag || "",
+    };
+    console.log("[App] Intentando guardar producto:", np.name, "ID:", np.id);
+
+    // 1. Agregar al estado local (optimista)
+    const newProducts = [...products, np];
+    setProducts(newProducts);
+
+    // 2. Guardar en Firebase INMEDIATAMENTE (sin esperar debounce)
+    const dataToSave = {
+      products:   newProducts,
+      categories,
+      whatsapp,
+      pass,
+      logo,
+      banner,
+      cTags,
+    };
+
+    const saved = await window.__fbSave(dataToSave);
+
+    if (saved) {
+      // 3. Solo limpiar si Firebase confirmó el guardado
+      console.log("[App] Guardado exitoso — limpiando formulario");
+      setUName(""); setUImgs([]); setUCat("");
+      setUPrice(""); setUDesc(""); setUTag("");
+    } else {
+      // 4. Si falló, revertir el estado y avisar al usuario
+      console.error("[App] Falló el guardado — revirtiendo estado");
+      setProducts(products); // revertir al estado anterior
+      alert("❌ Error al guardar el producto. Por favor intenta de nuevo.");
+    }
   };
   const addCat=()=>{
     if(!ncName.trim()) return;
