@@ -24,46 +24,40 @@
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const app = initializeApp({
-    apiKey:            "AIzaSyDBVeYmkce_T3MuOnDSSh6-q1SkG_tMY_c",
-    authDomain:        "catalogoj10-9f293.firebaseapp.com",
-    projectId:         "catalogoj10-9f293",
-    storageBucket:     "catalogoj10-9f293.firebasestorage.app",
-    messagingSenderId: "756032612761",
-    appId:             "1:756032612761:web:fa9886a1c9580514408b08"
+    apiKey:"AIzaSyDBVeYmkce_T3MuOnDSSh6-q1SkG_tMY_c",
+    authDomain:"catalogoj10-9f293.firebaseapp.com",
+    projectId:"catalogoj10-9f293",
+    storageBucket:"catalogoj10-9f293.firebasestorage.app",
+    messagingSenderId:"756032612761",
+    appId:"1:756032612761:web:fa9886a1c9580514408b08"
   });
 
-  const db     = getFirestore(app);
-  const DOCREF = doc(db, "catalogo", "j10_catalogo");
+  const db = getFirestore(app);
+  const REF = doc(db, "catalogo", "j10_catalogo");
 
-  // Guardar: convierte a JSON plano para eliminar undefined y objetos inválidos
-  window.__fbSave = async (data) => {
+  window._fbSave = async (data) => {
     try {
       const clean = JSON.parse(JSON.stringify(data));
-      await setDoc(DOCREF, clean);
-      console.log("[FB] Guardado OK — productos:", clean.products?.length);
-      return true;
+      await setDoc(REF, clean);
+      console.log("[FB] Guardado OK, productos:", clean.products?.length);
     } catch(e) {
-      console.error("[FB] Error al guardar:", e.message);
-      return false;
+      console.error("[FB] Error:", e.message);
     }
   };
 
-  // Escucha en tiempo real
-  window.__fbSub = (cb) => onSnapshot(DOCREF,
-    snap => cb(snap.exists() ? snap.data() : null),
-    err  => { console.error("[FB] onSnapshot error:", err.message); cb(null); }
+  window._fbListen = (cb) => onSnapshot(REF,
+    s => cb(s.exists() ? s.data() : null),
+    e => { console.error("[FB] Listen error:", e.message); cb(null); }
   );
 
-  window.__fbReady = true;
-  window.dispatchEvent(new Event("firebase-ready"));
-  console.log("[FB] SDK listo ✓");
+  window._fbReady = true;
+  window.dispatchEvent(new Event("fb-ready"));
 </script>
 
 <script type="text/babel">
 const { useState, useMemo, useEffect, useRef } = React;
 
-/* ── Defaults ── */
-const DEF_CATS = [
+const CATS0 = [
   {id:1,name:"Sala",icon:"🛋️"},{id:2,name:"Dormitorio",icon:"🛏️"},{id:3,name:"Exterior",icon:"🌿"},
   {id:4,name:"Cocina",icon:"🍳"},{id:5,name:"Baño",icon:"🛁"},{id:6,name:"Oficina",icon:"💻"},
   {id:7,name:"Iluminación",icon:"💡"},{id:8,name:"Decoración",icon:"🖼️"},{id:9,name:"Almacenamiento",icon:"🗄️"},
@@ -72,24 +66,19 @@ const DEF_CATS = [
   {id:16,name:"Ropa y Moda",icon:"👗"},{id:17,name:"Accesorios",icon:"👜"},{id:18,name:"Deportes",icon:"🏋️"},
   {id:19,name:"Mascotas",icon:"🐾"},{id:20,name:"Ofertas",icon:"🔥"},
 ];
-const DEF_PRODS = [
+const PRODS0 = [
   {id:1,catId:1,name:"Sofá Moderno",imgs:["https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"],enabled:true,price:"",description:"",tag:""},
   {id:2,catId:1,name:"Mesa de Centro",imgs:["https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=600"],enabled:true,price:"",description:"",tag:""},
   {id:4,catId:2,name:"Cama King",imgs:["https://images.unsplash.com/photo-1505693314120-0d443867891c?w=600"],enabled:true,price:"",description:"",tag:""},
   {id:6,catId:3,name:"Silla de Jardín",imgs:["https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=600"],enabled:true,price:"",description:"",tag:""},
 ];
-const DEF_BANNER  = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200";
-const PRESET_TAGS = ["Nuevo","Promo","SALE","Ahorro"];
-const TAG_COLORS  = {Nuevo:"#007aff",Promo:"#ff9500",SALE:"#ff3b30",Ahorro:"#34c759"};
+const BANNER0 = "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200";
+const PTAGS = ["Nuevo","Promo","SALE","Ahorro"];
+const TCOLORS = {Nuevo:"#007aff",Promo:"#ff9500",SALE:"#ff3b30",Ahorro:"#34c759"};
 const ICONS = ["📦","🛋️","🛏️","🌿","🪑","🚪","🪞","🛁","🍳","💡","🖼️","🧺","🪴","🏡","🛠️","🎨","📐","🪟","🧸","🛒","⭐","🔥","💎","✨","🎁","👔","👗","👟","💍","👜","🕶️","🧴","🍶","🥗","🍕","☕","🎵","📷","💻","📱","🎮","🚗","🌸","🐾","🧩","🗄️","🧶","🍽️","🏋️","🏠","🎀"];
 
-/* ── Helpers ── */
-const toB64 = f => new Promise((res,rej)=>{
-  const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f);
-});
-
-// Comprimir imagen a máx 600px, calidad 0.6 para no exceder límite Firestore 1MB
-const compressB64 = (b64, maxW=600, q=0.6) => new Promise(res=>{
+const toB64 = f => new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});
+const compress = (b64,maxW=600,q=0.65) => new Promise(res=>{
   const img=new Image();
   img.onload=()=>{
     const ratio=Math.min(1,maxW/img.width);
@@ -101,14 +90,10 @@ const compressB64 = (b64, maxW=600, q=0.6) => new Promise(res=>{
   img.onerror=()=>res(b64);
   img.src=b64;
 });
+const pickFile=(accept,multi,cb)=>{const i=document.createElement("input");i.type="file";i.accept=accept;if(multi)i.multiple=true;i.onchange=e=>cb(e.target.files);i.click();};
 
-const pickFile=(accept,multi,cb)=>{
-  const i=document.createElement("input");i.type="file";i.accept=accept;
-  if(multi)i.multiple=true;i.onchange=e=>cb(e.target.files);i.click();
-};
-
-/* ── Componentes ── */
-function LogoJ10({size=40,color="#1d1d1f"}){
+/* ── Mini components ── */
+function Logo({size=40,color="#1d1d1f"}){
   return <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
     <path d="M100 8 A92 92 0 0 0 8 100" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
     <path d="M8 100 A92 92 0 0 0 100 192" stroke={color} strokeWidth="18" strokeLinecap="round" fill="none"/>
@@ -122,13 +107,11 @@ function LogoJ10({size=40,color="#1d1d1f"}){
     <rect x="122" y="68" width="24" height="56" rx="12" fill="white"/>
   </svg>;
 }
-
-function TagBadge({tag,size="sm"}){
+function Tag({tag,sm=true}){
   if(!tag) return null;
-  return <span style={{background:TAG_COLORS[tag]||"#6e6e73",color:"#fff",fontSize:size==="sm"?10:12,fontWeight:700,padding:"3px 8px",borderRadius:20}}>{tag}</span>;
+  return <span style={{background:TCOLORS[tag]||"#6e6e73",color:"#fff",fontSize:sm?10:12,fontWeight:700,padding:"3px 8px",borderRadius:20}}>{tag}</span>;
 }
-
-function Carousel({imgs=[]}){
+function Slides({imgs=[]}){
   const [i,setI]=useState(0);
   if(!imgs.length) return <div style={{width:"100%",aspectRatio:"1/1",background:"#f5f5f7",borderRadius:10}}/>;
   return <div style={{position:"relative",borderRadius:10,overflow:"hidden"}}>
@@ -142,20 +125,19 @@ function Carousel({imgs=[]}){
     </>}
   </div>;
 }
-
-function ImgPicker({imgs=[],onChange}){
+function Pics({imgs=[],onChange}){
   const [url,setUrl]=useState("");
   const add=async files=>{
     const raw=await Promise.all(Array.from(files).map(toB64));
-    const compressed=await Promise.all(raw.map(b=>compressB64(b)));
-    onChange([...imgs,...compressed]);
+    const comp=await Promise.all(raw.map(b=>compress(b)));
+    onChange([...imgs,...comp]);
   };
-  const addUrl=()=>{ if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");} };
+  const addUrl=()=>{if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");}};
   const rm=i=>onChange(imgs.filter((_,j)=>j!==i));
   return <div>
     {imgs.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-      {imgs.map((img,i)=><div key={i} style={{position:"relative",width:72,height:72}}>
-        <img src={img} alt="" style={{width:72,height:72,objectFit:"cover",borderRadius:8}}/>
+      {imgs.map((src,i)=><div key={i} style={{position:"relative",width:72,height:72}}>
+        <img src={src} alt="" style={{width:72,height:72,objectFit:"cover",borderRadius:8}}/>
         <button onClick={()=>rm(i)} style={{position:"absolute",top:-6,right:-6,background:"#ff3b30",border:"none",color:"#fff",borderRadius:"50%",width:20,height:20,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button>
       </div>)}
     </div>}
@@ -169,14 +151,13 @@ function ImgPicker({imgs=[],onChange}){
     </div>
   </div>;
 }
-
-function TagSel({value,onChange,customTags=[]}){
+function TagPicker({value,onChange,custom=[]}){
   const [ci,setCi]=useState("");
-  const all=[...PRESET_TAGS,...customTags.filter(t=>!PRESET_TAGS.includes(t))];
+  const all=[...PTAGS,...custom.filter(t=>!PTAGS.includes(t))];
   return <div>
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
       <button onClick={()=>onChange("")} style={{padding:"5px 12px",borderRadius:20,border:"1px solid "+(!value?"#1d1d1f":"#d1d1d6"),background:!value?"#1d1d1f":"transparent",color:!value?"#fff":"#555",cursor:"pointer",fontSize:12}}>Sin etiqueta</button>
-      {all.map(t=><button key={t} onClick={()=>onChange(t)} style={{padding:"5px 12px",borderRadius:20,border:"1px solid "+(value===t?(TAG_COLORS[t]||"#6e6e73"):"#d1d1d6"),background:value===t?(TAG_COLORS[t]||"#6e6e73"):"transparent",color:value===t?"#fff":"#555",cursor:"pointer",fontSize:12}}>{t}</button>)}
+      {all.map(t=><button key={t} onClick={()=>onChange(t)} style={{padding:"5px 12px",borderRadius:20,border:"1px solid "+(value===t?(TCOLORS[t]||"#6e6e73"):"#d1d1d6"),background:value===t?(TCOLORS[t]||"#6e6e73"):"transparent",color:value===t?"#fff":"#555",cursor:"pointer",fontSize:12}}>{t}</button>)}
     </div>
     <div style={{display:"flex",gap:8}}>
       <input style={{flex:1,padding:"8px 12px",borderRadius:10,border:"1px solid #d1d1d6",fontSize:13,outline:"none",background:"#fff",color:"#1d1d1f",boxSizing:"border-box"}} placeholder="Etiqueta personalizada..." value={ci} onChange={e=>setCi(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&ci.trim()){onChange(ci.trim());setCi("");}}}/>
@@ -184,8 +165,7 @@ function TagSel({value,onChange,customTags=[]}){
     </div>
   </div>;
 }
-
-function Sec({label,children}){
+function Box({label,children}){
   return <div style={{marginBottom:24}}>
     <div style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#6e6e73",marginBottom:10,borderBottom:"1px solid #e5e5ea",paddingBottom:8}}>{label}</div>
     <div style={{background:"#fff",border:"1px solid #e5e5ea",borderRadius:16,padding:20}}>{children}</div>
@@ -194,527 +174,483 @@ function Sec({label,children}){
 
 /* ── App ── */
 function App(){
-  // Estado principal — se carga desde Firebase al inicio
-  const [products,  setProducts]  = useState(DEF_PRODS);
-  const [categories,setCategories]= useState(DEF_CATS);
-  const [whatsapp,  setWhatsapp]  = useState("573001234567");
-  const [pass,      setPass]      = useState("admin123");
-  const [logo,      setLogo]      = useState(null);
-  const [banner,    setBanner]    = useState(DEF_BANNER);
-  const [cTags,     setCTags]     = useState([]);
+  const [prods, setProds]   = useState(PRODS0);
+  const [cats,  setCats]    = useState(CATS0);
+  const [wa,    setWa]      = useState("573001234567");
+  const [pw,    setPw]      = useState("admin123");
+  const [logo,  setLogo]    = useState(null);
+  const [banner,setBanner]  = useState(BANNER0);
+  const [ctags, setCtags]   = useState([]);
+  const [ready, setReady]   = useState(!!window._fbReady);
+  const [loaded,setLoaded]  = useState(false);
+  const [status,setStatus]  = useState("ok");
 
-  const [fbReady,   setFbReady]   = useState(!!window.__fbReady);
-  const [loaded,    setLoaded]    = useState(false);
-  const [status,    setStatus]    = useState("ok");
+  const [view,  setView]    = useState("client");
+  const [cat,   setCat]     = useState(null);
+  const [q,     setQ]       = useState("");
+  const [selP,  setSelP]    = useState(null);
+  const [ci,    setCi]      = useState(0);
+  const [editP, setEditP]   = useState(null);
+  const [lPw,   setLPw]     = useState("");
+  const [lErr,  setLErr]    = useState(false);
+  const [eWa,   setEWa]     = useState(false);
+  const [waIn,  setWaIn]    = useState("");
+  const [ncN,   setNcN]     = useState("");
+  const [ncI,   setNcI]     = useState("📦");
+  const [sIP,   setSIP]     = useState(false);
+  const [ecCat, setEcCat]   = useState(null);
+  const [sEIP,  setSEIP]    = useState(false);
+  const [uCat,  setUCat]    = useState("");
+  const [uN,    setUN]      = useState("");
+  const [uImgs, setUImgs]   = useState([]);
+  const [uPr,   setUPr]     = useState("");
+  const [uDe,   setUDe]     = useState("");
+  const [uTag,  setUTag]    = useState("");
+  const [cPw,   setCPw]     = useState(false);
+  const [nPw,   setNPw]     = useState("");
+  const [cnPw,  setCnPw]    = useState("");
+  const [pErr,  setPErr]    = useState("");
+  const [eBan,  setEBan]    = useState(false);
+  const [ctIn,  setCtIn]    = useState("");
 
-  // UI state
-  const [view,      setView]      = useState("client");
-  const [activeCat, setActiveCat] = useState(null);
-  const [search,    setSearch]    = useState("");
-  const [selP,      setSelP]      = useState(null);
-  const [carI,      setCarI]      = useState(0);
-  const [editP,     setEditP]     = useState(null);
-  const [lpw,       setLpw]       = useState("");
-  const [lerr,      setLerr]      = useState(false);
-  const [editWa,    setEditWa]    = useState(false);
-  const [waIn,      setWaIn]      = useState("");
-  const [ncName,    setNcName]    = useState("");
-  const [ncIcon,    setNcIcon]    = useState("📦");
-  const [showIP,    setShowIP]    = useState(false);
-  const [editCat,   setEditCat]   = useState(null);
-  const [showEIP,   setShowEIP]   = useState(false);
-  const [uCat,      setUCat]      = useState("");
-  const [uName,     setUName]     = useState("");
-  const [uImgs,     setUImgs]     = useState([]);
-  const [uPrice,    setUPrice]    = useState("");
-  const [uDesc,     setUDesc]     = useState("");
-  const [uTag,      setUTag]      = useState("");
-  const [chPw,      setChPw]      = useState(false);
-  const [npw,       setNpw]       = useState("");
-  const [cpw,       setCpw]       = useState("");
-  const [pErr,      setPErr]      = useState("");
-  const [eBanner,   setEBanner]   = useState(false);
-  const [ctIn,      setCtIn]      = useState("");
+  const timer   = useRef(null);
+  const snap    = useRef(null); // datos más recientes para el debounce
+  const initing = useRef(true); // bloquea auto-save durante carga
 
-  // Refs para controlar el flujo de guardado
-  const debounceTimer  = useRef(null);
-  const currentData    = useRef(null);
-  const blockSnapshot  = useRef(true); // bloquea onSnapshot hasta que cargue
-  const initialized    = useRef(false);
-
-  /* ── Firebase: esperar SDK ── */
+  // Esperar Firebase
   useEffect(()=>{
-    if(window.__fbReady){ setFbReady(true); return; }
-    const h=()=>setFbReady(true);
-    window.addEventListener("firebase-ready",h);
-    return ()=>window.removeEventListener("firebase-ready",h);
+    if(window._fbReady){setReady(true);return;}
+    const h=()=>setReady(true);
+    window.addEventListener("fb-ready",h);
+    return()=>window.removeEventListener("fb-ready",h);
   },[]);
 
-  /* ── Firebase: suscripción onSnapshot ── */
+  // Cargar datos una sola vez con onSnapshot
   useEffect(()=>{
-    if(!fbReady) return;
-    const unsub = window.__fbSub(data=>{
-      if(blockSnapshot.current){
-        // Primera carga: aplicar datos de Firebase al estado
-        if(data){
-          if(Array.isArray(data.products))   setProducts(data.products);
-          if(Array.isArray(data.categories)) setCategories(data.categories);
-          if(data.whatsapp)  setWhatsapp(data.whatsapp);
-          if(data.pass)      setPass(data.pass);
-          setLogo(data.logo||null);
-          if(data.banner)    setBanner(data.banner);
-          if(Array.isArray(data.cTags)) setCTags(data.cTags);
-        } else {
-          // Primera vez: guardar defaults
-          window.__fbSave({products:DEF_PRODS,categories:DEF_CATS,whatsapp:"573001234567",pass:"admin123",logo:null,banner:DEF_BANNER,cTags:[]});
-        }
-        setLoaded(true);
-        initialized.current = true;
-        // Desbloquear snapshot después de que React aplique los setState
-        setTimeout(()=>{ blockSnapshot.current = false; }, 500);
+    if(!ready) return;
+    const unsub = window._fbListen(data=>{
+      if(!initing.current) return; // solo procesar la primera carga
+      if(data){
+        if(data.prods)  setProds(data.prods);
+        if(data.cats)   setCats(data.cats);
+        if(data.wa)     setWa(data.wa);
+        if(data.pw)     setPw(data.pw);
+        setLogo(data.logo||null);
+        if(data.banner) setBanner(data.banner);
+        if(data.ctags)  setCtags(data.ctags);
+      } else {
+        // Primera vez: escribir defaults
+        window._fbSave({prods:PRODS0,cats:CATS0,wa:"573001234567",pw:"admin123",logo:null,banner:BANNER0,ctags:[]});
       }
-      // Snapshots posteriores: ignorar (el auto-save ya maneja la sincronización)
+      setLoaded(true);
+      setTimeout(()=>{ initing.current=false; },400);
     });
-    return ()=>unsub();
-  },[fbReady]);
+    return()=>unsub();
+  },[ready]);
 
-  /* ── Auto-save con debounce: guarda cuando el estado cambia ── */
-  const doSave = (prods, cats, wa, pw, lg, bn, ct) => {
-    if(!initialized.current) return;
-    const data = {products:prods,categories:cats,whatsapp:wa,pass:pw,logo:lg,banner:bn,cTags:ct};
-    currentData.current = data;
+  // Auto-save con debounce 1.5s
+  const save = (p,c,w,pass,l,b,ct) => {
+    if(initing.current) return;
+    const d={prods:p,cats:c,wa:w,pw:pass,logo:l,banner:b,ctags:ct};
+    snap.current=d;
     setStatus("pending");
-    if(debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(async()=>{
+    if(timer.current) clearTimeout(timer.current);
+    timer.current=setTimeout(async()=>{
       setStatus("saving");
-      const ok = await window.__fbSave(currentData.current);
-      setStatus(ok?"ok":"error");
-    }, 1500);
+      await window._fbSave(snap.current);
+      setStatus("ok");
+    },1500);
   };
 
-  // Wrappers que actualizan estado Y disparan guardado
-  const setAndSaveProducts = (newProds) => {
-    setProducts(newProds);
-    doSave(newProds, categories, whatsapp, pass, logo, banner, cTags);
-  };
-  const setAndSaveCategories = (newCats) => {
-    setCategories(newCats);
-    doSave(products, newCats, whatsapp, pass, logo, banner, cTags);
-  };
-  const setAndSaveWhatsapp = (v) => {
-    setWhatsapp(v);
-    doSave(products, categories, v, pass, logo, banner, cTags);
-  };
-  const setAndSavePass = (v) => {
-    setPass(v);
-    doSave(products, categories, whatsapp, v, logo, banner, cTags);
-  };
-  const setAndSaveLogo = (v) => {
-    setLogo(v);
-    doSave(products, categories, whatsapp, pass, v, banner, cTags);
-  };
-  const setAndSaveBanner = (v) => {
-    setBanner(v);
-    doSave(products, categories, whatsapp, pass, logo, v, cTags);
-  };
-  const setAndSaveCTags = (v) => {
-    setCTags(v);
-    doSave(products, categories, whatsapp, pass, logo, banner, v);
-  };
+  // Helpers que actualizan estado y disparan save
+  const sProds  = v=>{setProds(v);  save(v,cats,wa,pw,logo,banner,ctags);};
+  const sCats   = v=>{setCats(v);   save(prods,v,wa,pw,logo,banner,ctags);};
+  const sWa     = v=>{setWa(v);     save(prods,cats,v,pw,logo,banner,ctags);};
+  const sPw     = v=>{setPw(v);     save(prods,cats,wa,v,logo,banner,ctags);};
+  const sLogo   = v=>{setLogo(v);   save(prods,cats,wa,pw,v,banner,ctags);};
+  const sBanner = v=>{setBanner(v); save(prods,cats,wa,pw,logo,v,ctags);};
+  const sCtags  = v=>{setCtags(v);  save(prods,cats,wa,pw,logo,banner,v);};
 
-  /* ── Acciones ── */
-  const toggleP  = id => setAndSaveProducts(products.map(p=>p.id===id?{...p,enabled:!p.enabled}:p));
-  const delP     = id => setAndSaveProducts(products.filter(p=>p.id!==id));
-  const saveEdit = () => {
+  // Acciones
+  const toggleP = id => sProds(prods.map(p=>p.id===id?{...p,enabled:!p.enabled}:p));
+  const delP    = id => sProds(prods.filter(p=>p.id!==id));
+  const doEdit  = ()=>{
     if(!editP?.name.trim()||!editP?.imgs?.length) return;
-    setAndSaveProducts(products.map(p=>p.id===editP.id?{...p,...editP}:p));
+    sProds(prods.map(p=>p.id===editP.id?{...p,...editP}:p));
     setEditP(null);
   };
-  const addP = () => {
-    if(!uName.trim()||!uImgs.length||!uCat) return;
-    const np={id:Date.now(),catId:parseInt(uCat),name:uName.trim(),imgs:uImgs,enabled:true,price:uPrice.trim(),description:uDesc.trim(),tag:uTag||""};
-    console.log("[App] Agregando producto:",np.name,"ID:",np.id);
-    setAndSaveProducts([...products,np]);
-    setUName("");setUImgs([]);setUCat("");setUPrice("");setUDesc("");setUTag("");
+  const addP = ()=>{
+    if(!uN.trim()||!uImgs.length||!uCat) return;
+    const np={id:Date.now(),catId:parseInt(uCat),name:uN.trim(),imgs:uImgs,enabled:true,price:uPr.trim(),description:uDe.trim(),tag:uTag||""};
+    sProds([...prods,np]);
+    setUN("");setUImgs([]);setUCat("");setUPr("");setUDe("");setUTag("");
   };
-  const addCat = () => {
-    if(!ncName.trim()) return;
-    setAndSaveCategories([...categories,{id:Date.now(),name:ncName.trim(),icon:ncIcon}]);
-    setNcName("");setNcIcon("📦");setShowIP(false);
+  const addCat = ()=>{
+    if(!ncN.trim()) return;
+    sCats([...cats,{id:Date.now(),name:ncN.trim(),icon:ncI}]);
+    setNcN("");setNcI("📦");setSIP(false);
   };
-  const saveEC = () => {
-    if(!editCat?.name.trim()) return;
-    setAndSaveCategories(categories.map(c=>c.id===editCat.id?{...c,name:editCat.name.trim(),icon:editCat.icon}:c));
-    setEditCat(null);setShowEIP(false);
+  const saveEC = ()=>{
+    if(!ecCat?.name.trim()) return;
+    sCats(cats.map(c=>c.id===ecCat.id?{...c,name:ecCat.name.trim(),icon:ecCat.icon}:c));
+    setEcCat(null);setSEIP(false);
   };
-  const delCat = id => {
-    setAndSaveCategories(categories.filter(c=>c.id!==id));
-    setAndSaveProducts(products.filter(p=>p.catId!==id));
-    if(activeCat===id) setActiveCat(null);
+  const delCat = id=>{
+    sCats(cats.filter(c=>c.id!==id));
+    sProds(prods.filter(p=>p.catId!==id));
+    if(cat===id) setCat(null);
   };
-  const login=()=>{
-    if(lpw===pass){setView("admin");setLerr(false);setLpw("");}
-    else setLerr(true);
+  const login = ()=>{
+    if(lPw===pw){setView("admin");setLErr(false);setLPw("");}
+    else setLErr(true);
   };
-  const savePw=()=>{
-    if(npw.length<6){setPErr("Mínimo 6 caracteres");return;}
-    if(npw!==cpw){setPErr("No coinciden");return;}
-    setAndSavePass(npw);setChPw(false);setNpw("");setCpw("");setPErr("");
+  const savePw = ()=>{
+    if(nPw.length<6){setPErr("Mínimo 6 caracteres");return;}
+    if(nPw!==cnPw){setPErr("No coinciden");return;}
+    sPw(nPw);setCPw(false);setNPw("");setCnPw("");setPErr("");
   };
-  const addCT=()=>{
-    if(ctIn.trim()&&!cTags.includes(ctIn.trim())) setAndSaveCTags([...cTags,ctIn.trim()]);
-    setCtIn("");
-  };
-  const rmCT=t=>setAndSaveCTags(cTags.filter(x=>x!==t));
+  const addCt = ()=>{if(ctIn.trim()&&!ctags.includes(ctIn.trim()))sCtags([...ctags,ctIn.trim()]);setCtIn("");};
+  const rmCt  = t=>sCtags(ctags.filter(x=>x!==t));
 
   const visible=useMemo(()=>{
-    let l=view==="admin"?[...products]:products.filter(p=>p.enabled===true);
-    if(activeCat!=null) l=l.filter(p=>p.catId===activeCat);
-    if(search.trim()) l=l.filter(p=>p.name.toLowerCase().includes(search.toLowerCase()));
+    let l=view==="admin"?[...prods]:prods.filter(p=>p.enabled);
+    if(cat!=null) l=l.filter(p=>p.catId===cat);
+    if(q.trim()) l=l.filter(p=>p.name.toLowerCase().includes(q.toLowerCase()));
     return l;
-  },[products,activeCat,search,view]);
+  },[prods,cat,q,view]);
 
-  const clientCats=categories.filter(c=>products.some(p=>p.catId===c.id&&p.enabled===true));
+  const clientCats=cats.filter(c=>prods.some(p=>p.catId===c.id&&p.enabled));
 
   const I={width:"100%",padding:"11px 14px",borderRadius:10,border:"1px solid #d1d1d6",fontSize:14,outline:"none",color:"#1d1d1f",background:"#fff",boxSizing:"border-box",marginBottom:10};
-  const P={padding:"10px 20px",borderRadius:10,background:"#1d1d1f",color:"#fff",border:"none",fontWeight:600,cursor:"pointer",fontSize:14};
-  const G={padding:"10px 20px",borderRadius:10,background:"#f5f5f7",color:"#1d1d1f",border:"none",fontWeight:500,cursor:"pointer",fontSize:14};
+  const Btn={padding:"10px 20px",borderRadius:10,background:"#1d1d1f",color:"#fff",border:"none",fontWeight:600,cursor:"pointer",fontSize:14};
+  const Gho={padding:"10px 20px",borderRadius:10,background:"#f5f5f7",color:"#1d1d1f",border:"none",fontWeight:500,cursor:"pointer",fontSize:14};
 
-  const StatusDot=()=>{
-    if(!fbReady)           return <span style={{fontSize:12,color:"#aaa"}}>⏳ Conectando...</span>;
-    if(status==="saving")  return <span style={{fontSize:12,color:"#007aff"}}>☁️ Guardando...</span>;
-    if(status==="pending") return <span style={{fontSize:12,color:"#ff9500"}}>● Pendiente</span>;
-    if(status==="error")   return <span style={{fontSize:12,color:"#ff3b30"}}>✗ Error</span>;
+  const Dot=()=>{
+    if(!ready)           return <span style={{fontSize:12,color:"#aaa"}}>⏳</span>;
+    if(status==="saving") return <span style={{fontSize:12,color:"#007aff"}}>☁️ Guardando...</span>;
+    if(status==="pending")return <span style={{fontSize:12,color:"#ff9500"}}>● Pendiente</span>;
     return <span style={{fontSize:12,color:"#34c759"}}>✓ En la nube</span>;
   };
 
-  if(!loaded) return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <LogoJ10 size={52}/>
-      <div style={{color:"#aaa",fontSize:14}}>{fbReady?"Cargando catálogo...":"Conectando con Firebase..."}</div>
-    </div>
-  );
+  if(!loaded) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+    <Logo size={52}/><div style={{color:"#aaa",fontSize:14}}>{ready?"Cargando...":"Conectando con Firebase..."}</div>
+  </div>;
 
-  if(view==="login") return (
-    <div style={{minHeight:"100vh",background:"#f5f5f7",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"#fff",borderRadius:20,padding:"48px 40px",width:340,maxWidth:"92vw",boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
-        <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{fontSize:36,marginBottom:8}}>🔐</div>
-          <div style={{fontSize:22,fontWeight:700}}>Panel Admin</div>
-        </div>
-        <input type="password" placeholder="Contraseña" value={lpw} onChange={e=>setLpw(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")login();}} style={{...I,border:lerr?"1px solid #ff3b30":"1px solid #d1d1d6",marginBottom:lerr?6:16}}/>
-        {lerr&&<div style={{color:"#ff3b30",fontSize:13,marginBottom:12}}>Contraseña incorrecta</div>}
-        <button onClick={login} style={{...P,width:"100%",padding:14,borderRadius:12,fontSize:15}}>Entrar</button>
-        <button onClick={()=>setView("client")} style={{...G,width:"100%",padding:13,marginTop:10,borderRadius:12}}>← Volver al catálogo</button>
+  if(view==="login") return <div style={{minHeight:"100vh",background:"#f5f5f7",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{background:"#fff",borderRadius:20,padding:"48px 40px",width:340,maxWidth:"92vw",boxShadow:"0 4px 24px rgba(0,0,0,0.08)"}}>
+      <div style={{textAlign:"center",marginBottom:32}}>
+        <div style={{fontSize:36,marginBottom:8}}>🔐</div>
+        <div style={{fontSize:22,fontWeight:700}}>Panel Admin</div>
       </div>
+      <input type="password" placeholder="Contraseña" value={lPw} onChange={e=>setLPw(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")login();}} style={{...I,border:lErr?"1px solid #ff3b30":"1px solid #d1d1d6",marginBottom:lErr?6:16}}/>
+      {lErr&&<div style={{color:"#ff3b30",fontSize:13,marginBottom:12}}>Contraseña incorrecta</div>}
+      <button onClick={login} style={{...Btn,width:"100%",padding:14,borderRadius:12,fontSize:15}}>Entrar</button>
+      <button onClick={()=>setView("client")} style={{...Gho,width:"100%",padding:13,marginTop:10,borderRadius:12}}>← Volver</button>
     </div>
-  );
+  </div>;
 
-  return (
-    <div style={{minHeight:"100vh",background:view==="admin"?"#f5f5f7":"#fff",paddingBottom:80}}>
+  return <div style={{minHeight:"100vh",background:view==="admin"?"#f5f5f7":"#fff",paddingBottom:80}}>
 
-      {/* HEADER */}
-      <div style={{background:"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #e5e5ea",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:56,position:"sticky",top:0,zIndex:100}}>
+    {/* HEADER */}
+    <div style={{background:"rgba(255,255,255,0.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid #e5e5ea",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:56,position:"sticky",top:0,zIndex:100}}>
+      {view==="admin"
+        ?<div style={{fontSize:16,fontWeight:700}}>⚙️ Administración</div>
+        :<div style={{display:"flex",alignItems:"center",gap:10}}>
+          {logo?<img src={logo} alt="logo" style={{width:34,height:34,objectFit:"contain",borderRadius:6}}/>:<Logo size={32}/>}
+          <div style={{fontSize:15,fontWeight:700,letterSpacing:-0.3,whiteSpace:"nowrap"}}>Distribuciones J10</div>
+        </div>}
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        {view==="admin"&&<Dot/>}
         {view==="admin"
-          ?<div style={{fontSize:16,fontWeight:700}}>⚙️ Administración</div>
-          :<div style={{display:"flex",alignItems:"center",gap:10}}>
-            {logo?<img src={logo} alt="logo" style={{width:34,height:34,objectFit:"contain",borderRadius:6}}/>:<LogoJ10 size={32}/>}
-            <div style={{fontSize:15,fontWeight:700,letterSpacing:-0.3,whiteSpace:"nowrap"}}>Distribuciones J10</div>
-          </div>}
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {view==="admin"&&<StatusDot/>}
-          {view==="admin"
-            ?<button onClick={()=>setView("client")} style={{...G,padding:"7px 14px",fontSize:13,borderRadius:8}}>← Salir</button>
-            :<button onClick={()=>setView("login")} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,fontWeight:500,color:"#007aff"}}>Admin</button>}
+          ?<button onClick={()=>setView("client")} style={{...Gho,padding:"7px 14px",fontSize:13,borderRadius:8}}>← Salir</button>
+          :<button onClick={()=>setView("login")} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,fontWeight:500,color:"#007aff"}}>Admin</button>}
+      </div>
+    </div>
+
+    {/* CLIENTE */}
+    {view==="client"&&<>
+      <div style={{position:"relative",height:360,overflow:"hidden",background:"#1d1d1f"}}>
+        {banner&&<img src={banner} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.5,display:"block"}}/>}
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
+          <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.7)",marginBottom:10,letterSpacing:2}}>COLECCIÓN</div>
+          <div style={{fontSize:44,fontWeight:800,color:"#fff",letterSpacing:-1.5,lineHeight:1.05,marginBottom:10}}>
+            {cat?cats.find(c=>c.id===cat)?.name:"Bienvenidos"}
+          </div>
+          <div style={{fontSize:14,color:"rgba(255,255,255,0.7)",maxWidth:340,lineHeight:1.6}}>Los mejores productos seleccionados para ti</div>
         </div>
       </div>
-
-      {/* CLIENTE */}
-      {view==="client"&&<>
-        <div style={{position:"relative",height:360,overflow:"hidden",background:"#1d1d1f"}}>
-          {banner&&<img src={banner} alt="banner" style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.5,display:"block"}}/>}
-          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
-            <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.7)",marginBottom:10,letterSpacing:2}}>COLECCIÓN</div>
-            <div style={{fontSize:44,fontWeight:800,color:"#fff",letterSpacing:-1.5,lineHeight:1.05,marginBottom:10}}>
-              {activeCat?categories.find(c=>c.id===activeCat)?.name:"Bienvenidos"}
-            </div>
-            <div style={{fontSize:14,color:"rgba(255,255,255,0.7)",maxWidth:340,lineHeight:1.6}}>Los mejores productos seleccionados para ti</div>
-          </div>
-        </div>
-        <div style={{borderBottom:"1px solid #e5e5ea"}}>
-          <div style={{display:"flex",justifyContent:"center",overflowX:"auto",maxWidth:960,margin:"0 auto"}}>
-            {[{id:null,name:"Todos",icon:""},...clientCats].map(c=>{
-              const act=c.id===null?!activeCat:activeCat===c.id;
-              return <button key={c.id===null?"all":c.id} onClick={()=>setActiveCat(c.id)}
-                style={{padding:"13px 18px",background:"none",border:"none",borderBottom:act?"2.5px solid #1d1d1f":"2.5px solid transparent",color:act?"#1d1d1f":"#6e6e73",fontWeight:act?700:400,cursor:"pointer",fontSize:13,whiteSpace:"nowrap",marginBottom:-1}}>
-                {c.icon} {c.name}
-              </button>;
-            })}
-          </div>
-        </div>
-        <div style={{maxWidth:960,margin:"22px auto 16px",padding:"0 16px"}}>
-          <div style={{position:"relative",maxWidth:460}}>
-            <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#aaa"}}>🔍</span>
-            <input style={{...I,paddingLeft:40,marginBottom:0,background:"#f5f5f7",border:"1px solid transparent",borderRadius:12}} placeholder="Buscar productos..." value={search} onChange={e=>setSearch(e.target.value)}/>
-          </div>
-        </div>
-        <div style={{maxWidth:960,margin:"0 auto",padding:"0 16px"}}>
-          {visible.length>0&&<div style={{fontSize:12,color:"#6e6e73",marginBottom:14}}>{visible.length} producto{visible.length!==1?"s":""}</div>}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
-            {visible.map(p=>(
-              <div key={p.id} onClick={()=>{setSelP(p);setCarI(0);}}
-                style={{borderRadius:16,overflow:"hidden",background:"#f5f5f7",cursor:"pointer",border:"1px solid #e5e5ea",transition:"transform .15s"}}
-                onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.02)";}}
-                onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}>
-                <div style={{background:"#fff",padding:10,position:"relative"}}>
-                  <Carousel imgs={p.imgs||[p.img]}/>
-                  {p.tag&&<div style={{position:"absolute",top:16,left:16}}><TagBadge tag={p.tag}/></div>}
-                </div>
-                <div style={{padding:"8px 12px 12px"}}>
-                  <div style={{fontSize:13,fontWeight:600,color:"#1d1d1f",marginBottom:2}}>{p.name}</div>
-                  {p.price&&<div style={{fontSize:13,fontWeight:700,color:"#1d1d1f"}}>{p.price}</div>}
-                  {p.description&&<div style={{fontSize:11,color:"#6e6e73",marginTop:3,lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.description}</div>}
-                </div>
-              </div>
-            ))}
-            {visible.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"60px 0",color:"#bbb"}}>
-              <div style={{fontSize:36,marginBottom:12}}>🔍</div>
-              <div style={{fontSize:15}}>Sin resultados</div>
-            </div>}
-          </div>
-        </div>
-        <div style={{background:"#1d1d1f",color:"#fff",textAlign:"center",padding:"36px 24px",marginTop:56}}>
-          <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><LogoJ10 size={36} color="#fff"/></div>
-          <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",letterSpacing:1}}>Distribuciones J10 — Todos los derechos reservados</div>
-        </div>
-        <a href={"https://wa.me/"+whatsapp} target="_blank" rel="noreferrer"
-          style={{position:"fixed",bottom:24,right:24,background:"#25d366",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,zIndex:150,boxShadow:"0 4px 20px rgba(37,211,102,0.45)",textDecoration:"none"}}>💬</a>
-      </>}
-
-      {/* ADMIN */}
-      {view==="admin"&&<div style={{maxWidth:600,margin:"0 auto",padding:"24px 16px"}}>
-        <Sec label="Logo de la empresa">
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:60,height:60,borderRadius:12,background:"#f5f5f7",border:"1px solid #e5e5ea",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
-              {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<LogoJ10 size={38}/>}
-            </div>
-            <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,marginBottom:2}}>Logo actual</div><div style={{fontSize:12,color:"#6e6e73"}}>PNG, JPG o SVG</div></div>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              <button onClick={()=>pickFile("image/*",false,async f=>{const b=await toB64(f[0]);const c=await compressB64(b);setAndSaveLogo(c);})} style={{...P,padding:"7px 14px",fontSize:13,borderRadius:10}}>Subir</button>
-              {logo&&<button onClick={()=>setAndSaveLogo(null)} style={{...G,padding:"6px 14px",fontSize:13,borderRadius:10,color:"#ff3b30"}}>Eliminar</button>}
-            </div>
-          </div>
-        </Sec>
-
-        <Sec label="Banner principal">
-          <div style={{borderRadius:12,overflow:"hidden",position:"relative",height:130,background:"#1d1d1f",marginBottom:12}}>
-            {banner&&<img src={banner} alt="banner" style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.6}}/>}
-            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13,fontWeight:600,color:"#fff"}}>Vista previa</span></div>
-          </div>
-          <div style={{display:"flex",gap:8,marginBottom:eBanner?12:0}}>
-            <button onClick={()=>setEBanner(v=>!v)} style={{...P,flex:1,padding:11,borderRadius:12,fontSize:13}}>🖼️ {eBanner?"Cancelar":"Cambiar banner"}</button>
-            {banner&&<button onClick={()=>{setAndSaveBanner("");setEBanner(false);}} style={{...G,padding:"11px 14px",borderRadius:12,fontSize:13,color:"#ff3b30"}}>🗑 Eliminar</button>}
-          </div>
-          {eBanner&&<div style={{marginTop:8}}>
-            <button onClick={()=>pickFile("image/*",false,async f=>{const b=await toB64(f[0]);const c=await compressB64(b);setAndSaveBanner(c);setEBanner(false);})} style={{...P,width:"100%",padding:11,borderRadius:12,fontSize:13,marginBottom:8}}>📁 Subir archivo</button>
-            <div style={{display:"flex",gap:8}}>
-              <input id="bnUrl" style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="O pega URL..."/>
-              <button onClick={()=>{const v=document.getElementById("bnUrl").value.trim();if(v){setAndSaveBanner(v);setEBanner(false);}}} style={{...P,padding:"11px 14px",borderRadius:12,fontSize:13}}>OK</button>
-            </div>
-          </div>}
-        </Sec>
-
-        <Sec label="Etiquetas personalizadas">
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:10}}>Predefinidas: {PRESET_TAGS.map((t,i)=><span key={t}>{i>0?" ":""}<TagBadge tag={t}/></span>)}</div>
-          {cTags.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-            {cTags.map(t=><div key={t} style={{display:"flex",alignItems:"center",gap:4,background:"#f5f5f7",borderRadius:20,padding:"4px 10px",fontSize:12}}>
-              <span>{t}</span><button onClick={()=>rmCT(t)} style={{background:"none",border:"none",color:"#ff3b30",cursor:"pointer",fontSize:14,padding:0,lineHeight:1}}>×</button>
-            </div>)}
-          </div>}
-          <div style={{display:"flex",gap:8}}>
-            <input style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="Nueva etiqueta..." value={ctIn} onChange={e=>setCtIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addCT();}}/>
-            <button onClick={addCT} style={{...P,padding:"0 16px",height:44,borderRadius:10,fontSize:13}}>+ Agregar</button>
-          </div>
-        </Sec>
-
-        <Sec label="Seguridad">
-          {!chPw
-            ?<div style={{display:"flex",alignItems:"center"}}>
-                <div style={{flex:1,fontSize:15}}>🔐 Contraseña de acceso</div>
-                <button style={{...G,padding:"8px 14px",fontSize:13,borderRadius:8}} onClick={()=>setChPw(true)}>Cambiar</button>
-              </div>
-            :<>
-                <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nueva contraseña (mín. 6 caracteres)</div>
-                <input type="password" style={I} value={npw} onChange={e=>{setNpw(e.target.value);setPErr("");}} placeholder="Nueva contraseña"/>
-                <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Confirmar</div>
-                <input type="password" style={I} value={cpw} onChange={e=>{setCpw(e.target.value);setPErr("");}} placeholder="Repetir contraseña"/>
-                {pErr&&<div style={{color:"#ff3b30",fontSize:13,marginBottom:10}}>{pErr}</div>}
-                <div style={{display:"flex",gap:8}}>
-                  <button style={{...P,flex:1}} onClick={savePw}>Guardar</button>
-                  <button style={{...G,flex:1}} onClick={()=>{setChPw(false);setNpw("");setCpw("");setPErr("");}}>Cancelar</button>
-                </div>
-              </>}
-        </Sec>
-
-        <Sec label="WhatsApp de contacto">
-          {editWa
-            ?<div style={{display:"flex",gap:8}}>
-                <input style={{...I,marginBottom:0,flex:1}} value={waIn} onChange={e=>setWaIn(e.target.value)} placeholder="ej: 573001234567"/>
-                <button style={P} onClick={()=>{setAndSaveWhatsapp(waIn);setEditWa(false);}}>Guardar</button>
-              </div>
-            :<div style={{display:"flex",alignItems:"center"}}>
-                <div style={{flex:1,fontSize:15}}>💬 +{whatsapp}</div>
-                <button style={{...G,padding:"8px 14px",fontSize:13,borderRadius:8}} onClick={()=>{setWaIn(whatsapp);setEditWa(true);}}>Editar</button>
-              </div>}
-        </Sec>
-
-        <Sec label={"Categorías ("+categories.length+")"}>
-          {categories.map((c,i)=>(
-            <div key={c.id} style={{borderBottom:i<categories.length-1?"1px solid #f2f2f7":"none",paddingBottom:10,marginBottom:10}}>
-              {editCat&&editCat.id===c.id?(
-                <div>
-                  {showEIP&&<div style={{display:"flex",flexWrap:"wrap",gap:5,background:"#f5f5f7",borderRadius:12,padding:10,marginBottom:8}}>
-                    {ICONS.map(ic=><button key={ic} onClick={()=>{setEditCat(ec=>({...ec,icon:ic}));setShowEIP(false);}} style={{fontSize:20,background:editCat.icon===ic?"#1d1d1f":"transparent",border:"none",borderRadius:6,padding:"3px 5px",cursor:"pointer"}}>{ic}</button>)}
-                  </div>}
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <button onClick={()=>setShowEIP(v=>!v)} style={{fontSize:20,background:"#f5f5f7",border:"1px solid #d1d1d6",borderRadius:10,padding:"0 10px",cursor:"pointer",height:42,flexShrink:0}}>{editCat.icon}</button>
-                    <input style={{...I,marginBottom:0,flex:1,fontSize:13}} value={editCat.name} onChange={e=>setEditCat(ec=>({...ec,name:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter")saveEC();}}/>
-                    <button onClick={saveEC} style={{...P,height:42,padding:"0 14px",fontSize:13,borderRadius:10}}>✓</button>
-                    <button onClick={()=>{setEditCat(null);setShowEIP(false);}} style={{...G,height:42,padding:"0 12px",fontSize:13,borderRadius:10}}>✕</button>
-                  </div>
-                </div>
-              ):(
-                <div style={{display:"flex",alignItems:"center"}}>
-                  <div style={{flex:1,fontSize:14}}>{c.icon} {c.name}</div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>{setEditCat({...c});setShowEIP(false);}} style={{background:"#f0f5ff",border:"none",color:"#007aff",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:500}}>✏️ Editar</button>
-                    <button onClick={()=>delCat(c.id)} style={{background:"#fff0f0",border:"none",color:"#ff3b30",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:500}}>Eliminar</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          {showIP&&<div style={{display:"flex",flexWrap:"wrap",gap:5,background:"#f5f5f7",borderRadius:12,padding:10,marginBottom:10}}>
-            {ICONS.map(ic=><button key={ic} onClick={()=>{setNcIcon(ic);setShowIP(false);}} style={{fontSize:20,background:ncIcon===ic?"#1d1d1f":"transparent",border:"none",borderRadius:6,padding:"3px 5px",cursor:"pointer"}}>{ic}</button>)}
-          </div>}
-          <div style={{display:"flex",gap:8,marginTop:8}}>
-            <button onClick={()=>setShowIP(v=>!v)} style={{fontSize:18,background:"#f5f5f7",border:"1px solid #d1d1d6",borderRadius:10,padding:"0 10px",cursor:"pointer",height:42,flexShrink:0}}>{ncIcon}</button>
-            <input style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="Nueva categoría..." value={ncName} onChange={e=>setNcName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addCat();}}/>
-            <button style={{...P,height:42,padding:"0 14px",fontSize:13}} onClick={addCat}>+ Agregar</button>
-          </div>
-        </Sec>
-
-        <Sec label="Agregar producto">
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nombre *</div>
-          <input style={I} placeholder="ej: Silla Ergonómica" value={uName} onChange={e=>setUName(e.target.value)}/>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Precio</div>
-          <input style={I} placeholder="ej: $120.000" value={uPrice} onChange={e=>setUPrice(e.target.value)}/>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Descripción</div>
-          <textarea style={{...I,resize:"vertical",minHeight:72}} placeholder="Descripción..." value={uDesc} onChange={e=>setUDesc(e.target.value)}/>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Categoría *</div>
-          <select style={{...I,appearance:"none"}} value={uCat} onChange={e=>setUCat(e.target.value)}>
-            <option value="">Seleccionar...</option>
-            {categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Etiqueta</div>
-          <TagSel value={uTag} onChange={setUTag} customTags={cTags}/>
-          <div style={{fontSize:13,color:"#6e6e73",margin:"12px 0 6px"}}>Fotos * (puedes agregar varias)</div>
-          <ImgPicker imgs={uImgs} onChange={setUImgs}/>
-          <button onClick={addP} style={{...P,width:"100%",padding:13,borderRadius:12,marginTop:12,fontSize:14,opacity:(!uName.trim()||!uImgs.length||!uCat)?0.4:1}}>
-            Agregar al catálogo
-          </button>
-        </Sec>
-
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#6e6e73",marginBottom:10,borderBottom:"1px solid #e5e5ea",paddingBottom:8}}>Productos ({products.length})</div>
-        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-          {[{id:null,name:"Todos"},...categories].map(c=>{
-            const act=c.id===null?!activeCat:activeCat===c.id;
-            return <button key={c.id===null?"all":c.id} onClick={()=>setActiveCat(c.id)} style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+(act?"#1d1d1f":"#d1d1d6"),background:act?"#1d1d1f":"transparent",color:act?"#fff":"#555",cursor:"pointer",fontSize:12,fontWeight:500}}>{c.name}</button>;
+      <div style={{borderBottom:"1px solid #e5e5ea"}}>
+        <div style={{display:"flex",justifyContent:"center",overflowX:"auto",maxWidth:960,margin:"0 auto"}}>
+          {[{id:null,name:"Todos",icon:""},...clientCats].map(c=>{
+            const act=c.id===null?!cat:cat===c.id;
+            return <button key={c.id===null?"all":c.id} onClick={()=>setCat(c.id)}
+              style={{padding:"13px 18px",background:"none",border:"none",borderBottom:act?"2.5px solid #1d1d1f":"2.5px solid transparent",color:act?"#1d1d1f":"#6e6e73",fontWeight:act?700:400,cursor:"pointer",fontSize:13,whiteSpace:"nowrap",marginBottom:-1}}>
+              {c.icon} {c.name}
+            </button>;
           })}
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {(activeCat?products.filter(p=>p.catId===activeCat):products).map(p=>(
-            <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:14,padding:12,border:"1px solid #e5e5ea"}}>
-              <img src={(p.imgs||[p.img])[0]} alt={p.name} style={{width:50,height:50,borderRadius:10,objectFit:"cover",flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                  <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                  {p.tag&&<TagBadge tag={p.tag}/>}
-                </div>
-                <div style={{fontSize:11,color:"#6e6e73"}}>{categories.find(c=>c.id===p.catId)?.name}{p.price?" · "+p.price:""}</div>
+      </div>
+      <div style={{maxWidth:960,margin:"22px auto 16px",padding:"0 16px"}}>
+        <div style={{position:"relative",maxWidth:460}}>
+          <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#aaa"}}>🔍</span>
+          <input style={{...I,paddingLeft:40,marginBottom:0,background:"#f5f5f7",border:"1px solid transparent",borderRadius:12}} placeholder="Buscar productos..." value={q} onChange={e=>setQ(e.target.value)}/>
+        </div>
+      </div>
+      <div style={{maxWidth:960,margin:"0 auto",padding:"0 16px"}}>
+        {visible.length>0&&<div style={{fontSize:12,color:"#6e6e73",marginBottom:14}}>{visible.length} producto{visible.length!==1?"s":""}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+          {visible.map(p=>(
+            <div key={p.id} onClick={()=>{setSelP(p);setCi(0);}}
+              style={{borderRadius:16,overflow:"hidden",background:"#f5f5f7",cursor:"pointer",border:"1px solid #e5e5ea",transition:"transform .15s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.02)";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}>
+              <div style={{background:"#fff",padding:10,position:"relative"}}>
+                <Slides imgs={p.imgs||[p.img]}/>
+                {p.tag&&<div style={{position:"absolute",top:16,left:16}}><Tag tag={p.tag}/></div>}
               </div>
-              <button onClick={()=>toggleP(p.id)} style={{padding:"5px 10px",borderRadius:8,border:"none",background:p.enabled?"#e8faf0":"#fff2f2",color:p.enabled?"#34c759":"#ff3b30",fontWeight:600,cursor:"pointer",fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>{p.enabled?"✓ Activo":"✗ Oculto"}</button>
-              <button onClick={()=>setEditP({...p,imgs:p.imgs||[p.img]})} style={{background:"#f0f5ff",border:"none",color:"#007aff",borderRadius:8,padding:"6px 9px",cursor:"pointer",fontSize:14,flexShrink:0}}>✏️</button>
-              <button onClick={()=>delP(p.id)} style={{background:"#fff2f2",border:"none",color:"#ff3b30",borderRadius:8,padding:"6px 9px",cursor:"pointer",fontSize:14,flexShrink:0}}>🗑</button>
+              <div style={{padding:"8px 12px 12px"}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#1d1d1f",marginBottom:2}}>{p.name}</div>
+                {p.price&&<div style={{fontSize:13,fontWeight:700,color:"#1d1d1f"}}>{p.price}</div>}
+                {p.description&&<div style={{fontSize:11,color:"#6e6e73",marginTop:3,lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.description}</div>}
+              </div>
             </div>
           ))}
+          {visible.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"60px 0",color:"#bbb"}}>
+            <div style={{fontSize:36,marginBottom:12}}>🔍</div>
+            <div style={{fontSize:15}}>Sin resultados</div>
+          </div>}
         </div>
-      </div>}
+      </div>
+      <div style={{background:"#1d1d1f",color:"#fff",textAlign:"center",padding:"36px 24px",marginTop:56}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Logo size={36} color="#fff"/></div>
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",letterSpacing:1}}>Distribuciones J10 — Todos los derechos reservados</div>
+      </div>
+      <a href={"https://wa.me/"+wa} target="_blank" rel="noreferrer"
+        style={{position:"fixed",bottom:24,right:24,background:"#25d366",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,zIndex:150,boxShadow:"0 4px 20px rgba(37,211,102,0.45)",textDecoration:"none"}}>💬</a>
+    </>}
 
-      {/* MODAL EDITAR */}
-      {editP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setEditP(null)}>
-        <div style={{background:"#fff",borderRadius:20,padding:24,width:400,maxWidth:"95vw",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
-          <div style={{fontSize:17,fontWeight:700,marginBottom:18}}>Editar producto</div>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nombre</div>
-          <input style={I} value={editP.name} onChange={e=>setEditP(ep=>({...ep,name:e.target.value}))}/>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Precio</div>
-          <input style={I} placeholder="ej: $120.000" value={editP.price||""} onChange={e=>setEditP(ep=>({...ep,price:e.target.value}))}/>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Descripción</div>
-          <textarea style={{...I,resize:"vertical",minHeight:64}} value={editP.description||""} onChange={e=>setEditP(ep=>({...ep,description:e.target.value}))}/>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Categoría</div>
-          <select style={{...I,appearance:"none"}} value={editP.catId} onChange={e=>setEditP(ep=>({...ep,catId:parseInt(e.target.value)}))}>
-            {categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
-          <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Etiqueta</div>
-          <TagSel value={editP.tag||""} onChange={v=>setEditP(ep=>({...ep,tag:v}))} customTags={cTags}/>
-          <div style={{fontSize:13,color:"#6e6e73",margin:"12px 0 6px"}}>Fotos</div>
-          <ImgPicker imgs={editP.imgs||[]} onChange={imgs=>setEditP(ep=>({...ep,imgs}))}/>
-          <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={saveEdit} style={{...P,flex:1,padding:12,borderRadius:12}}>Guardar</button>
-            <button onClick={()=>setEditP(null)} style={{...G,flex:1,padding:12,borderRadius:12}}>Cancelar</button>
-          </div>
+    {/* ADMIN */}
+    {view==="admin"&&<div style={{maxWidth:600,margin:"0 auto",padding:"24px 16px"}}>
+
+      <Box label="Logo"><div style={{display:"flex",alignItems:"center",gap:14}}>
+        <div style={{width:60,height:60,borderRadius:12,background:"#f5f5f7",border:"1px solid #e5e5ea",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+          {logo?<img src={logo} alt="logo" style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<Logo size={38}/>}
         </div>
-      </div>}
+        <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,marginBottom:2}}>Logo actual</div><div style={{fontSize:12,color:"#6e6e73"}}>PNG, JPG o SVG</div></div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <button onClick={()=>pickFile("image/*",false,async f=>{const b=await toB64(f[0]);sLogo(await compress(b));})} style={{...Btn,padding:"7px 14px",fontSize:13,borderRadius:10}}>Subir</button>
+          {logo&&<button onClick={()=>sLogo(null)} style={{...Gho,padding:"6px 14px",fontSize:13,borderRadius:10,color:"#ff3b30"}}>Eliminar</button>}
+        </div>
+      </div></Box>
 
-      {/* MODAL DETALLE */}
-      {selP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setSelP(null)}>
-        <div style={{background:"#fff",borderRadius:24,overflow:"hidden",maxWidth:440,width:"100%",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
-          <div style={{position:"relative",background:"#fff",padding:12}}>
-            {(()=>{
-              const imgs=selP.imgs||[selP.img];
-              return <div style={{position:"relative",borderRadius:14,overflow:"hidden"}}>
-                <img src={imgs[carI]} alt={selP.name} style={{width:"100%",aspectRatio:"1/1",objectFit:"cover",display:"block"}}/>
-                {imgs.length>1&&<>
-                  <button onClick={e=>{e.stopPropagation();setCarI(i=>(i-1+imgs.length)%imgs.length);}} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.4)",border:"none",color:"#fff",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-                  <button onClick={e=>{e.stopPropagation();setCarI(i=>(i+1)%imgs.length);}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.4)",border:"none",color:"#fff",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
-                  <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>
-                    {imgs.map((_,i)=><div key={i} onClick={e=>{e.stopPropagation();setCarI(i);}} style={{width:7,height:7,borderRadius:"50%",background:i===carI?"#1d1d1f":"rgba(0,0,0,0.25)",cursor:"pointer"}}/>)}
-                  </div>
-                  <div style={{display:"flex",gap:6,marginTop:8,overflowX:"auto",paddingBottom:2}}>
-                    {imgs.map((img,i)=><img key={i} src={img} alt="" onClick={e=>{e.stopPropagation();setCarI(i);}} style={{width:52,height:52,objectFit:"cover",borderRadius:8,flexShrink:0,border:i===carI?"2px solid #1d1d1f":"2px solid transparent",cursor:"pointer"}}/>)}
-                  </div>
-                </>}
-              </div>;
-            })()}
-            <button onClick={()=>setSelP(null)} style={{position:"absolute",top:18,right:18,background:"#fff",border:"none",borderRadius:"50%",width:32,height:32,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.15)",zIndex:10}}>×</button>
+      <Box label="Banner">
+        <div style={{borderRadius:12,overflow:"hidden",position:"relative",height:130,background:"#1d1d1f",marginBottom:12}}>
+          {banner&&<img src={banner} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:0.6}}/>}
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13,fontWeight:600,color:"#fff"}}>Vista previa</span></div>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:eBan?12:0}}>
+          <button onClick={()=>setEBan(v=>!v)} style={{...Btn,flex:1,padding:11,borderRadius:12,fontSize:13}}>🖼️ {eBan?"Cancelar":"Cambiar banner"}</button>
+          {banner&&<button onClick={()=>{sBanner("");setEBan(false);}} style={{...Gho,padding:"11px 14px",borderRadius:12,fontSize:13,color:"#ff3b30"}}>🗑</button>}
+        </div>
+        {eBan&&<div style={{marginTop:8}}>
+          <button onClick={()=>pickFile("image/*",false,async f=>{sBanner(await compress(await toB64(f[0])));setEBan(false);})} style={{...Btn,width:"100%",padding:11,borderRadius:12,fontSize:13,marginBottom:8}}>📁 Subir archivo</button>
+          <div style={{display:"flex",gap:8}}>
+            <input id="bUrl" style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="O pega URL..."/>
+            <button onClick={()=>{const v=document.getElementById("bUrl").value.trim();if(v){sBanner(v);setEBan(false);}}} style={{...Btn,padding:"11px 14px",borderRadius:12,fontSize:13}}>OK</button>
           </div>
-          <div style={{padding:"16px 20px 24px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-              <div style={{fontSize:11,color:"#6e6e73"}}>{categories.find(c=>c.id===selP.catId)?.name}</div>
-              {selP.tag&&<TagBadge tag={selP.tag}/>}
+        </div>}
+      </Box>
+
+      <Box label="Etiquetas personalizadas">
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:10}}>Predefinidas: {PTAGS.map((t,i)=><span key={t}>{i>0?" ":""}<Tag tag={t}/></span>)}</div>
+        {ctags.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+          {ctags.map(t=><div key={t} style={{display:"flex",alignItems:"center",gap:4,background:"#f5f5f7",borderRadius:20,padding:"4px 10px",fontSize:12}}>
+            <span>{t}</span><button onClick={()=>rmCt(t)} style={{background:"none",border:"none",color:"#ff3b30",cursor:"pointer",fontSize:14,padding:0,lineHeight:1}}>×</button>
+          </div>)}
+        </div>}
+        <div style={{display:"flex",gap:8}}>
+          <input style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="Nueva etiqueta..." value={ctIn} onChange={e=>setCtIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addCt();}}/>
+          <button onClick={addCt} style={{...Btn,padding:"0 16px",height:44,borderRadius:10,fontSize:13}}>+ Agregar</button>
+        </div>
+      </Box>
+
+      <Box label="Seguridad">
+        {!cPw
+          ?<div style={{display:"flex",alignItems:"center"}}>
+              <div style={{flex:1,fontSize:15}}>🔐 Contraseña de acceso</div>
+              <button style={{...Gho,padding:"8px 14px",fontSize:13,borderRadius:8}} onClick={()=>setCPw(true)}>Cambiar</button>
             </div>
-            <div style={{fontSize:20,fontWeight:700,marginBottom:4}}>{selP.name}</div>
-            {selP.price&&<div style={{fontSize:18,fontWeight:800,color:"#1d1d1f",marginBottom:8}}>{selP.price}</div>}
-            {selP.description&&<div style={{fontSize:14,color:"#6e6e73",lineHeight:1.6,marginBottom:16}}>{selP.description}</div>}
-            <a href={"https://wa.me/"+whatsapp+"?text=Hola! Me interesa: "+selP.name} target="_blank" rel="noreferrer"
-              style={{display:"block",textAlign:"center",padding:14,background:"#25d366",color:"#fff",borderRadius:12,textDecoration:"none",fontWeight:600,fontSize:15}}>
-              💬 Consultar por WhatsApp
-            </a>
+          :<>
+              <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nueva contraseña (mín. 6)</div>
+              <input type="password" style={I} value={nPw} onChange={e=>{setNPw(e.target.value);setPErr("");}} placeholder="Nueva contraseña"/>
+              <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Confirmar</div>
+              <input type="password" style={I} value={cnPw} onChange={e=>{setCnPw(e.target.value);setPErr("");}} placeholder="Repetir"/>
+              {pErr&&<div style={{color:"#ff3b30",fontSize:13,marginBottom:10}}>{pErr}</div>}
+              <div style={{display:"flex",gap:8}}>
+                <button style={{...Btn,flex:1}} onClick={savePw}>Guardar</button>
+                <button style={{...Gho,flex:1}} onClick={()=>{setCPw(false);setNPw("");setCnPw("");setPErr("");}}>Cancelar</button>
+              </div>
+            </>}
+      </Box>
+
+      <Box label="WhatsApp">
+        {eWa
+          ?<div style={{display:"flex",gap:8}}>
+              <input style={{...I,marginBottom:0,flex:1}} value={waIn} onChange={e=>setWaIn(e.target.value)} placeholder="ej: 573001234567"/>
+              <button style={Btn} onClick={()=>{sWa(waIn);setEWa(false);}}>Guardar</button>
+            </div>
+          :<div style={{display:"flex",alignItems:"center"}}>
+              <div style={{flex:1,fontSize:15}}>💬 +{wa}</div>
+              <button style={{...Gho,padding:"8px 14px",fontSize:13,borderRadius:8}} onClick={()=>{setWaIn(wa);setEWa(true);}}>Editar</button>
+            </div>}
+      </Box>
+
+      <Box label={"Categorías ("+cats.length+")"}>
+        {cats.map((c,i)=>(
+          <div key={c.id} style={{borderBottom:i<cats.length-1?"1px solid #f2f2f7":"none",paddingBottom:10,marginBottom:10}}>
+            {ecCat&&ecCat.id===c.id?(
+              <div>
+                {sEIP&&<div style={{display:"flex",flexWrap:"wrap",gap:5,background:"#f5f5f7",borderRadius:12,padding:10,marginBottom:8}}>
+                  {ICONS.map(ic=><button key={ic} onClick={()=>{setEcCat(ec=>({...ec,icon:ic}));setSEIP(false);}} style={{fontSize:20,background:ecCat.icon===ic?"#1d1d1f":"transparent",border:"none",borderRadius:6,padding:"3px 5px",cursor:"pointer"}}>{ic}</button>)}
+                </div>}
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <button onClick={()=>setSEIP(v=>!v)} style={{fontSize:20,background:"#f5f5f7",border:"1px solid #d1d1d6",borderRadius:10,padding:"0 10px",cursor:"pointer",height:42,flexShrink:0}}>{ecCat.icon}</button>
+                  <input style={{...I,marginBottom:0,flex:1,fontSize:13}} value={ecCat.name} onChange={e=>setEcCat(ec=>({...ec,name:e.target.value}))} onKeyDown={e=>{if(e.key==="Enter")saveEC();}}/>
+                  <button onClick={saveEC} style={{...Btn,height:42,padding:"0 14px",fontSize:13,borderRadius:10}}>✓</button>
+                  <button onClick={()=>{setEcCat(null);setSEIP(false);}} style={{...Gho,height:42,padding:"0 12px",fontSize:13,borderRadius:10}}>✕</button>
+                </div>
+              </div>
+            ):(
+              <div style={{display:"flex",alignItems:"center"}}>
+                <div style={{flex:1,fontSize:14}}>{c.icon} {c.name}</div>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>{setEcCat({...c});setSEIP(false);}} style={{background:"#f0f5ff",border:"none",color:"#007aff",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:500}}>✏️ Editar</button>
+                  <button onClick={()=>delCat(c.id)} style={{background:"#fff0f0",border:"none",color:"#ff3b30",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:500}}>Eliminar</button>
+                </div>
+              </div>
+            )}
           </div>
+        ))}
+        {sIP&&<div style={{display:"flex",flexWrap:"wrap",gap:5,background:"#f5f5f7",borderRadius:12,padding:10,marginBottom:10}}>
+          {ICONS.map(ic=><button key={ic} onClick={()=>{setNcI(ic);setSIP(false);}} style={{fontSize:20,background:ncI===ic?"#1d1d1f":"transparent",border:"none",borderRadius:6,padding:"3px 5px",cursor:"pointer"}}>{ic}</button>)}
+        </div>}
+        <div style={{display:"flex",gap:8,marginTop:8}}>
+          <button onClick={()=>setSIP(v=>!v)} style={{fontSize:18,background:"#f5f5f7",border:"1px solid #d1d1d6",borderRadius:10,padding:"0 10px",cursor:"pointer",height:42,flexShrink:0}}>{ncI}</button>
+          <input style={{...I,marginBottom:0,flex:1,fontSize:13}} placeholder="Nueva categoría..." value={ncN} onChange={e=>setNcN(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addCat();}}/>
+          <button style={{...Btn,height:42,padding:"0 14px",fontSize:13}} onClick={addCat}>+ Agregar</button>
         </div>
-      </div>}
-    </div>
-  );
+      </Box>
+
+      <Box label="Agregar producto">
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nombre *</div>
+        <input style={I} placeholder="ej: Silla Ergonómica" value={uN} onChange={e=>setUN(e.target.value)}/>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Precio</div>
+        <input style={I} placeholder="ej: $120.000" value={uPr} onChange={e=>setUPr(e.target.value)}/>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Descripción</div>
+        <textarea style={{...I,resize:"vertical",minHeight:72}} placeholder="Descripción..." value={uDe} onChange={e=>setUDe(e.target.value)}/>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Categoría *</div>
+        <select style={{...I,appearance:"none"}} value={uCat} onChange={e=>setUCat(e.target.value)}>
+          <option value="">Seleccionar...</option>
+          {cats.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        </select>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Etiqueta</div>
+        <TagPicker value={uTag} onChange={setUTag} custom={ctags}/>
+        <div style={{fontSize:13,color:"#6e6e73",margin:"12px 0 6px"}}>Fotos *</div>
+        <Pics imgs={uImgs} onChange={setUImgs}/>
+        <button onClick={addP} style={{...Btn,width:"100%",padding:13,borderRadius:12,marginTop:12,fontSize:14,opacity:(!uN.trim()||!uImgs.length||!uCat)?0.4:1}}>
+          Agregar al catálogo
+        </button>
+      </Box>
+
+      <div style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"#6e6e73",marginBottom:10,borderBottom:"1px solid #e5e5ea",paddingBottom:8}}>Productos ({prods.length})</div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {[{id:null,name:"Todos"},...cats].map(c=>{
+          const act=c.id===null?!cat:cat===c.id;
+          return <button key={c.id===null?"all":c.id} onClick={()=>setCat(c.id)} style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+(act?"#1d1d1f":"#d1d1d6"),background:act?"#1d1d1f":"transparent",color:act?"#fff":"#555",cursor:"pointer",fontSize:12,fontWeight:500}}>{c.name}</button>;
+        })}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {(cat?prods.filter(p=>p.catId===cat):prods).map(p=>(
+          <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:14,padding:12,border:"1px solid #e5e5ea"}}>
+            <img src={(p.imgs||[p.img])[0]} alt={p.name} style={{width:50,height:50,borderRadius:10,objectFit:"cover",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                {p.tag&&<Tag tag={p.tag}/>}
+              </div>
+              <div style={{fontSize:11,color:"#6e6e73"}}>{cats.find(c=>c.id===p.catId)?.name}{p.price?" · "+p.price:""}</div>
+            </div>
+            <button onClick={()=>toggleP(p.id)} style={{padding:"5px 10px",borderRadius:8,border:"none",background:p.enabled?"#e8faf0":"#fff2f2",color:p.enabled?"#34c759":"#ff3b30",fontWeight:600,cursor:"pointer",fontSize:11,whiteSpace:"nowrap",flexShrink:0}}>{p.enabled?"✓ Activo":"✗ Oculto"}</button>
+            <button onClick={()=>setEditP({...p,imgs:p.imgs||[p.img]})} style={{background:"#f0f5ff",border:"none",color:"#007aff",borderRadius:8,padding:"6px 9px",cursor:"pointer",fontSize:14,flexShrink:0}}>✏️</button>
+            <button onClick={()=>delP(p.id)} style={{background:"#fff2f2",border:"none",color:"#ff3b30",borderRadius:8,padding:"6px 9px",cursor:"pointer",fontSize:14,flexShrink:0}}>🗑</button>
+          </div>
+        ))}
+      </div>
+    </div>}
+
+    {/* MODAL EDITAR */}
+    {editP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setEditP(null)}>
+      <div style={{background:"#fff",borderRadius:20,padding:24,width:400,maxWidth:"95vw",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:18}}>Editar producto</div>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Nombre</div>
+        <input style={I} value={editP.name} onChange={e=>setEditP(ep=>({...ep,name:e.target.value}))}/>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Precio</div>
+        <input style={I} placeholder="ej: $120.000" value={editP.price||""} onChange={e=>setEditP(ep=>({...ep,price:e.target.value}))}/>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Descripción</div>
+        <textarea style={{...I,resize:"vertical",minHeight:64}} value={editP.description||""} onChange={e=>setEditP(ep=>({...ep,description:e.target.value}))}/>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Categoría</div>
+        <select style={{...I,appearance:"none"}} value={editP.catId} onChange={e=>setEditP(ep=>({...ep,catId:parseInt(e.target.value)}))}>
+          {cats.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+        </select>
+        <div style={{fontSize:13,color:"#6e6e73",marginBottom:6}}>Etiqueta</div>
+        <TagPicker value={editP.tag||""} onChange={v=>setEditP(ep=>({...ep,tag:v}))} custom={ctags}/>
+        <div style={{fontSize:13,color:"#6e6e73",margin:"12px 0 6px"}}>Fotos</div>
+        <Pics imgs={editP.imgs||[]} onChange={imgs=>setEditP(ep=>({...ep,imgs}))}/>
+        <div style={{display:"flex",gap:10,marginTop:16}}>
+          <button onClick={doEdit} style={{...Btn,flex:1,padding:12,borderRadius:12}}>Guardar</button>
+          <button onClick={()=>setEditP(null)} style={{...Gho,flex:1,padding:12,borderRadius:12}}>Cancelar</button>
+        </div>
+      </div>
+    </div>}
+
+    {/* MODAL DETALLE */}
+    {selP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setSelP(null)}>
+      <div style={{background:"#fff",borderRadius:24,overflow:"hidden",maxWidth:440,width:"100%",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"relative",background:"#fff",padding:12}}>
+          {(()=>{
+            const imgs=selP.imgs||[selP.img];
+            return <div style={{position:"relative",borderRadius:14,overflow:"hidden"}}>
+              <img src={imgs[ci]} alt={selP.name} style={{width:"100%",aspectRatio:"1/1",objectFit:"cover",display:"block"}}/>
+              {imgs.length>1&&<>
+                <button onClick={e=>{e.stopPropagation();setCi(i=>(i-1+imgs.length)%imgs.length);}} style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.4)",border:"none",color:"#fff",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+                <button onClick={e=>{e.stopPropagation();setCi(i=>(i+1)%imgs.length);}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.4)",border:"none",color:"#fff",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+                <div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",display:"flex",gap:5}}>
+                  {imgs.map((_,i)=><div key={i} onClick={e=>{e.stopPropagation();setCi(i);}} style={{width:7,height:7,borderRadius:"50%",background:i===ci?"#1d1d1f":"rgba(0,0,0,0.25)",cursor:"pointer"}}/>)}
+                </div>
+                <div style={{display:"flex",gap:6,marginTop:8,overflowX:"auto",paddingBottom:2}}>
+                  {imgs.map((src,i)=><img key={i} src={src} alt="" onClick={e=>{e.stopPropagation();setCi(i);}} style={{width:52,height:52,objectFit:"cover",borderRadius:8,flexShrink:0,border:i===ci?"2px solid #1d1d1f":"2px solid transparent",cursor:"pointer"}}/>)}
+                </div>
+              </>}
+            </div>;
+          })()}
+          <button onClick={()=>setSelP(null)} style={{position:"absolute",top:18,right:18,background:"#fff",border:"none",borderRadius:"50%",width:32,height:32,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.15)",zIndex:10}}>×</button>
+        </div>
+        <div style={{padding:"16px 20px 24px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <div style={{fontSize:11,color:"#6e6e73"}}>{cats.find(c=>c.id===selP.catId)?.name}</div>
+            {selP.tag&&<Tag tag={selP.tag}/>}
+          </div>
+          <div style={{fontSize:20,fontWeight:700,marginBottom:4}}>{selP.name}</div>
+          {selP.price&&<div style={{fontSize:18,fontWeight:800,color:"#1d1d1f",marginBottom:8}}>{selP.price}</div>}
+          {selP.description&&<div style={{fontSize:14,color:"#6e6e73",lineHeight:1.6,marginBottom:16}}>{selP.description}</div>}
+          <a href={"https://wa.me/"+wa+"?text=Hola! Me interesa: "+selP.name} target="_blank" rel="noreferrer"
+            style={{display:"block",textAlign:"center",padding:14,background:"#25d366",color:"#fff",borderRadius:12,textDecoration:"none",fontWeight:600,fontSize:15}}>
+            💬 Consultar por WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>}
+  </div>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
