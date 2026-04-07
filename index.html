@@ -54,7 +54,7 @@
         id:          p.id          ?? Date.now(),
         catId:       p.catId       ?? 0,
         name:        p.name        || "",
-      imgs: (p.imgs || []).filter(i => typeof i === "string" && (i.startsWith("http") || i.startsWith("data:"))),
+        imgs:        (p.imgs || []).filter(i => typeof i === "string" && i.startsWith("http") || i.startsWith("data:")),
         enabled:     p.enabled     ?? true,
         price:       p.price       || "",
         description: p.description || "",
