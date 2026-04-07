@@ -54,7 +54,7 @@
         id:          p.id          ?? Date.now(),
         catId:       p.catId       ?? 0,
         name:        p.name        || "",
-        imgs:        (p.imgs || []).filter(i => typeof i === "string" && i.startsWith("http") || i.startsWith("data:")),
+      imgs: (p.imgs || []).filter(i => typeof i === "string" && (i.startsWith("http") || i.startsWith("data:"))),
         enabled:     p.enabled     ?? true,
         price:       p.price       || "",
         description: p.description || "",
@@ -153,6 +153,21 @@ const PRESET_TAGS = ["Nuevo","Promo","SALE","Ahorro"];
 const TAG_COLORS  = {Nuevo:"#007aff",Promo:"#ff9500",SALE:"#ff3b30",Ahorro:"#34c759"};
 const ICONS = ["📦","🛋️","🛏️","🌿","🪑","🚪","🪞","🛁","🍳","💡","🖼️","🧺","🪴","🏡","🛠️","🎨","📐","🪟","🧸","🛒","⭐","🔥","💎","✨","🎁","👔","👗","👟","💍","👜","🕶️","🧴","🍶","🥗","🍕","☕","🎵","📷","💻","📱","🎮","🚗","🌸","🐾","🧩","🗄️","🧶","🍽️","🏋️","🏠","🎀"];
 
+// Comprimir imagen base64 antes de guardar
+const compressImage = (base64, maxWidth=800, quality=0.7) => new Promise(res => {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    const ratio = Math.min(1, maxWidth / img.width);
+    canvas.width  = img.width  * ratio;
+    canvas.height = img.height * ratio;
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    res(canvas.toDataURL("image/jpeg", quality));
+  };
+  img.onerror = () => res(base64); // si falla, devolver original
+  img.src = base64;
+});
+
 const toB64 = f => new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});
 const pickFile = (accept,multi,cb)=>{const i=document.createElement("input");i.type="file";i.accept=accept;if(multi)i.multiple=true;i.onchange=e=>cb(e.target.files);i.click();};
 
@@ -194,7 +209,11 @@ function Carousel({imgs=[]}){
 
 function ImgPicker({imgs=[],onChange}){
   const [url,setUrl]=useState("");
-  const add=async files=>{const b=await Promise.all(Array.from(files).map(toB64));onChange([...imgs,...b]);};
+  const add = async files => {
+    const raw  = await Promise.all(Array.from(files).map(toB64));
+    const compressed = await Promise.all(raw.map(b64 => compressImage(b64)));
+    onChange([...imgs, ...compressed]);
+  };
   const addUrl=()=>{if(url.trim()){onChange([...imgs,url.trim()]);setUrl("");}};
   const rm=i=>onChange(imgs.filter((_,j)=>j!==i));
   return <div>
@@ -360,6 +379,7 @@ function App(){
     setProducts(newProducts);
 
     // 2. Guardar en Firebase INMEDIATAMENTE (sin esperar debounce)
+    isSaving.current = true; // bloquear onSnapshot durante el guardado
     const dataToSave = {
       products:   newProducts,
       categories,
