@@ -360,7 +360,6 @@ function App(){
     setProducts(newProducts);
 
     // 2. Guardar en Firebase INMEDIATAMENTE (sin esperar debounce)
-    isSaving.current = true; // bloquear onSnapshot durante el guardado
     const dataToSave = {
       products:   newProducts,
       categories,
